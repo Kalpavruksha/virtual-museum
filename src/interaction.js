@@ -74,8 +74,13 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
       videoWrap.style.display = 'block';
       videoEl.play().catch(() => {});
     } else if (ex.type === 'model') {
-      img.src = '/assets/images/vitruvian_man.jpg';
       img.style.display = 'none';
+      if (ex.audioSrc || ex.id === 'one_ring') {
+        const audioSrc = ex.audioSrc || '/assets/audio/the_one_ring_violin.mp3';
+        audioEl.src = audioSrc;
+        audioWrap.style.display = 'block';
+        audioEl.play().catch(() => {});
+      }
     }
 
     panel.classList.add('show');
@@ -101,6 +106,14 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
       else if (current) show(current.userData.exhibit);
     }
     if (e.code === 'Escape' && open) close();
+  });
+
+  // Clicking an exhibit in focus opens it directly
+  window.addEventListener('click', e => {
+    if (open) return;
+    if (current && e.target.tagName !== 'BUTTON' && !panel.contains(e.target)) {
+      show(current.userData.exhibit);
+    }
   });
 
   $('#p-close')?.addEventListener('click', close);

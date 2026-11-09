@@ -365,11 +365,11 @@ function modelPedestal(ex) {
   g.add(hi);
   g.userData = { exhibit: ex, highlight: hi };
 
-  return { object: g, collider: box(x, z, 1.2, 1.2) };
+  return { object: g, collider: box(x, z, 1.2, 1.2), rotator: holder };
 }
 
 export async function buildExhibits(scene, colliders) {
-  const targets = [], medias = [];
+  const targets = [], medias = [], rotators = [];
   const makers = { image: frameArt, video: videoScreen, audio: audioStation, model: modelPedestal };
   const built = await Promise.all(EXHIBITS.map(async ex => makers[ex.type](ex)));
   for (const b of built) {
@@ -377,10 +377,14 @@ export async function buildExhibits(scene, colliders) {
     targets.push(b.object);
     if (b.collider) colliders.push(b.collider);
     if (b.media) medias.push(b.media);
+    if (b.rotator) rotators.push(b.rotator);
   }
   return {
     targets,
     startMedia: () => medias.forEach(m => m.start()),
-    update: cam => medias.forEach(m => m.update(cam.position.distanceTo(m.pos))),
+    update: (cam, dt = 0.016) => {
+      medias.forEach(m => m.update(cam.position.distanceTo(m.pos)));
+      rotators.forEach(r => { r.rotation.y += dt * 0.4; });
+    },
   };
 }
