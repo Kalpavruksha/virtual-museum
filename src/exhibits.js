@@ -287,10 +287,10 @@ function proceduralRing(radius = 0.27, tube = 0.052) {
   const g = new THREE.Group();
   const ringGeom = new THREE.TorusGeometry(radius, tube, 24, 48);
   const ringMat = new THREE.MeshStandardMaterial({
-    color: 0xdfb140,
-    metalness: 0.94,
-    roughness: 0.2,
-    emissive: 0x4a3205
+    color: 0xffd54f,
+    metalness: 0.5,
+    roughness: 0.18,
+    emissive: 0x5a3e08
   });
   const mesh = new THREE.Mesh(ringGeom, ringMat);
   mesh.rotation.x = 0.52;
@@ -398,34 +398,36 @@ function modelPedestal(ex) {
               geom.addGroup(24576, 36864, 1); // Material 1: The Words / Inscription (12,288 triangles)
 
               const texLoader = new THREE.TextureLoader();
-              const fieryTex = texLoader.load('/assets/models/one-ring/textures/one_ring_inscription_fiery.png');
-              fieryTex.colorSpace = THREE.SRGBColorSpace;
-              fieryTex.wrapS = THREE.RepeatWrapping;
+              const brightTex = texLoader.load('/assets/models/one-ring/textures/one_ring_inscription_bright.png');
+              brightTex.colorSpace = THREE.SRGBColorSpace;
+              brightTex.wrapS = THREE.RepeatWrapping;
 
-              // Polished 24K gold body
+              // Gleaming 24K pure gold body - warm, lustrous, NEVER black!
               const bodyMat = new THREE.MeshStandardMaterial({
-                color: 0xdfaf37,
-                metalness: 0.95,
-                roughness: 0.12,
+                color: 0xffd54f,        // Rich, vibrant, warm 24K gold
+                emissive: 0x5a3e08,     // Warm golden ambient glow so it never turns black in shadow
+                metalness: 0.50,        // Balanced metallic sheen + strong golden diffuse
+                roughness: 0.16,        // Smooth polished mirror gold
                 envMapIntensity: 2.2
               });
 
-              // Fiery glowing Tengwar script words with high-res texture map
+              // Bright white-hot glowing Tengwar script runes!
               const runeMat = new THREE.MeshStandardMaterial({
-                color: 0xff3b00,        // Fiery red-orange
-                emissive: 0xff4500,     // Glowing fiery Tengwar script
-                emissiveIntensity: 3.8, // Bright incandescent Mordor glow
-                emissiveMap: fieryTex,
-                map: fieryTex,
-                metalness: 0.2,
-                roughness: 0.25
+                color: 0xfffae6,        // White-hot incandescent core
+                emissive: 0xfff0aa,     // Luminous white-gold incandescence
+                emissiveIntensity: 4.5, // Bright radiant Mordor glow
+                emissiveMap: brightTex,
+                map: brightTex,
+                metalness: 0.1,
+                roughness: 0.18
               });
 
               child.material = [bodyMat, runeMat];
             } else if (child.material) {
-              child.material.metalness = 0.96;
+              child.material.metalness = 0.5;
               child.material.roughness = 0.16;
-              child.material.envMapIntensity = 2.4;
+              child.material.color.setHex(0xffd54f);
+              child.material.emissive.setHex(0x5a3e08);
             }
           }
         }
@@ -453,7 +455,7 @@ function modelPedestal(ex) {
         m.rotation.z = 0.14;
 
         // Aura point light at center of the One Ring
-        const ringGlow = new THREE.PointLight(0xff6600, 3.5, 2.2, 2);
+        const ringGlow = new THREE.PointLight(0xffdf88, 3.5, 2.2, 2);
         ringGlow.position.set(0, 0, 0);
         holder.add(ringGlow);
       } else {
@@ -478,7 +480,7 @@ function modelPedestal(ex) {
 
   // Spotlight with soft contact shadow
   const spotTargetY = isRing ? baseY : (ped + ex.height / 2);
-  spot(g, new THREE.Vector3(x, H - 0.3, z + 0.6), new THREE.Vector3(x, spotTargetY, z), isRing ? 60 : 48, true);
+  spot(g, new THREE.Vector3(x, H - 0.3, z + 0.6), new THREE.Vector3(x, spotTargetY, z), isRing ? 75 : 48, true);
 
   const hiHeight = isRing ? (vitrineH + 0.1) : (ex.height + 0.4);
   const hi = highlight(1.3, ped + hiHeight, 1.3);

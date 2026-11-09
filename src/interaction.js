@@ -123,28 +123,34 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
               geom.addGroup(24576, 36864, 1); // Material 1: The Words / Inscription
 
               const texLoader = new THREE.TextureLoader();
-              const fieryTex = texLoader.load('/assets/models/one-ring/textures/one_ring_inscription_fiery.png');
-              fieryTex.colorSpace = THREE.SRGBColorSpace;
-              fieryTex.wrapS = THREE.RepeatWrapping;
+              const brightTex = texLoader.load('/assets/models/one-ring/textures/one_ring_inscription_bright.png');
+              brightTex.colorSpace = THREE.SRGBColorSpace;
+              brightTex.wrapS = THREE.RepeatWrapping;
 
               const bodyMat = new THREE.MeshStandardMaterial({
-                color: 0xdfaf37,
-                metalness: 0.95,
-                roughness: 0.12,
+                color: 0xffd54f,        // Rich, vibrant, warm 24K gold
+                emissive: 0x5a3e08,     // Warm golden glow so it never turns black in shadow
+                metalness: 0.50,        // Strong golden metallic sheen + full diffuse
+                roughness: 0.16,
                 envMapIntensity: 2.5
               });
 
               const runeMat = new THREE.MeshStandardMaterial({
-                color: 0xff3b00,
-                emissive: 0xff4500,
-                emissiveIntensity: 4.8, // Bright glowing fiery runes in 3D close-up viewer
-                emissiveMap: fieryTex,
-                map: fieryTex,
-                metalness: 0.2,
-                roughness: 0.2
+                color: 0xfffae6,        // White-hot incandescent core
+                emissive: 0xfff0aa,     // Bright white-gold incandescent glow
+                emissiveIntensity: 5.0, // Razor sharp, glowing runes in close-up
+                emissiveMap: brightTex,
+                map: brightTex,
+                metalness: 0.1,
+                roughness: 0.18
               });
 
               child.material = [bodyMat, runeMat];
+            } else if (child.material) {
+              child.material.metalness = 0.5;
+              child.material.roughness = 0.16;
+              child.material.color.setHex(0xffd54f);
+              child.material.emissive.setHex(0x5a3e08);
             }
           }
         }
@@ -164,7 +170,7 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
 
       if (isRing) {
         modalPivot.rotation.x = 0.48; // Angle fiery runes toward viewer
-        const ringGlow = new THREE.PointLight(0xff6600, 4.0, 2.5, 2);
+        const ringGlow = new THREE.PointLight(0xffdf88, 4.0, 2.5, 2);
         modalPivot.add(ringGlow);
       }
 
