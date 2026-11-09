@@ -42,7 +42,9 @@ $('loading')?.addEventListener('pointerdown', () => $('loading')?.classList.add(
 $('loading')?.addEventListener('touchstart', () => $('loading')?.classList.add('hide'), { passive: true });
 
 // Device & Hardware Capability Detection
-const isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(pointer: coarse)').matches;
+const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+const isSmallTouch = (('ontouchstart' in window) || (navigator.maxTouchPoints > 0)) && window.matchMedia && window.matchMedia('(pointer: coarse)').matches && (window.innerWidth <= 1024 || window.innerHeight <= 600);
+const isMobileDevice = isMobileUA || isSmallTouch || document.documentElement.classList.contains('mobile-device');
 if (isMobileDevice) {
   document.body.classList.add('is-touch-device');
 }
@@ -239,7 +241,7 @@ if (btnDismissRotate) {
 }
 
 let lastEnterTime = 0;
-const enterMuseum = () => {
+const enterMuseum = (isTouchTrigger = false) => {
   const now = performance.now();
   if (now - lastEnterTime < 250) return;
   lastEnterTime = now;
@@ -252,7 +254,7 @@ const enterMuseum = () => {
   try { initAudio(); resumeAudio(); } catch (_) {}
   try { exhibits?.startMedia?.(); } catch (_) {}
 
-  if (isMobileDevice) {
+  if (isMobileDevice && isTouchTrigger) {
     requestLandscape();
   } else {
     try { player.controls.lock(); } catch (_) {}
@@ -262,24 +264,36 @@ const enterMuseum = () => {
 const startEl = $('start');
 const startBtn = $('startBtn');
 
-const handleEnter = e => {
+const handleEnterClick = e => {
   e?.stopPropagation?.();
-  enterMuseum();
+  enterMuseum(false);
+};
+
+const handleEnterTouch = e => {
+  e?.stopPropagation?.();
+  enterMuseum(true);
 };
 
 if (startBtn) {
-  startBtn.addEventListener('click', handleEnter);
-  startBtn.addEventListener('touchstart', handleEnter, { passive: true });
+  startBtn.addEventListener('click', handleEnterClick);
+  startBtn.addEventListener('touchstart', handleEnterTouch, { passive: true });
 }
 
 if (startEl) {
-  startEl.addEventListener('click', handleEnter);
+  startEl.addEventListener('click', handleEnterClick);
   startEl.addEventListener('touchstart', e => {
     if (e.target === startEl || e.target.closest('#startBtn')) {
-      handleEnter(e);
+      handleEnterTouch(e);
     }
   }, { passive: true });
 }
+
+// Clicking canvas while tour is active re-locks mouse cursor on desktop
+renderer.domElement.addEventListener('click', () => {
+  if (!player.isMobile() && !interaction?.isOpen?.() && !player.controls.isLocked) {
+    try { player.controls.lock(); } catch (_) {}
+  }
+});
 
 player.controls.addEventListener('lock', () => {
   document.body.classList.add('tour-active');

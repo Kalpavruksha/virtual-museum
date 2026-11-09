@@ -10,7 +10,8 @@
     var isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
     var isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     var isCoarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-    if (isMobileUA || (isTouch && (window.innerWidth <= 1024 || isCoarse))) {
+    var isSmallScreen = window.innerWidth <= 1024 || window.innerHeight <= 600;
+    if (isMobileUA || (isTouch && isCoarse && isSmallScreen)) {
       document.documentElement.classList.add('mobile-device');
       window.__IS_MOBILE__ = true;
     }

@@ -20,7 +20,9 @@ export function createPlayer(camera, dom, colliders, options = {}) {
   addEventListener('keyup', e => { keys[e.code] = false; });
 
   // Mobile / Touch State
-  const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(pointer: coarse)').matches;
+  const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const isSmallTouch = (('ontouchstart' in window) || (navigator.maxTouchPoints > 0)) && window.matchMedia && window.matchMedia('(pointer: coarse)').matches && (window.innerWidth <= 1024 || window.innerHeight <= 600);
+  const isTouchDevice = isMobileUA || isSmallTouch || document.documentElement.classList.contains('mobile-device');
   let isMobileMode = isTouchDevice;
   let isTourStarted = false;
   let isModalOpen = false;
@@ -251,7 +253,7 @@ export function createPlayer(camera, dom, colliders, options = {}) {
 
   function isActive() {
     if (isModalOpen) return false;
-    return controls.isLocked || (isMobileMode && isTourStarted);
+    return controls.isLocked || isTourStarted;
   }
 
   function update(dt) {
