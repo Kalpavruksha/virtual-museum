@@ -121,9 +121,15 @@ $('startBtn')?.addEventListener('click', e => {
   e.stopPropagation();
   enterMuseum();
 });
-player.controls.addEventListener('lock', () => $('start').classList.add('hide'));
+player.controls.addEventListener('lock', () => {
+  $('start').classList.add('hide');
+  exhibits.startMedia();
+});
 player.controls.addEventListener('unlock', () => {
-  if (!interaction.isOpen()) $('start').classList.remove('hide');
+  if (!interaction.isOpen()) {
+    $('start').classList.remove('hide');
+    exhibits.pauseAllMedia();
+  }
 });
 
 addEventListener('resize', () => {
@@ -145,9 +151,10 @@ window.__museum = {
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
+  const isPaused = !player.controls.isLocked && !interaction.isOpen();
   player.update(dt);
   interaction.update();
-  exhibits.update(camera, dt);
+  exhibits.update(camera, dt, isPaused);
   drawMap(camera);
   composer ? composer.render() : renderer.render(scene, camera);
 });

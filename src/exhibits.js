@@ -175,10 +175,17 @@ function videoScreen(ex) {
     object: g,
     media: {
       start: () => video.play().catch(() => {}),
+      pause: () => {
+        video.pause();
+      },
       update: d => {
-        if (d < 12) {
+        // Tight, focused screening range: directly in front of the screen (within 4.8m)
+        // Does NOT bleed into The One Ring (at 7.2m away)
+        const maxDist = 4.8;
+        if (d < maxDist) {
           video.muted = false;
-          video.volume = THREE.MathUtils.clamp(1 - d / 12, 0, 1) * 0.85;
+          video.volume = THREE.MathUtils.clamp(1 - d / maxDist, 0, 1) * 0.85;
+          if (video.paused) video.play().catch(() => {});
         } else {
           video.volume = 0;
         }
@@ -255,13 +262,20 @@ function audioStation(ex) {
     media: {
       pos: new THREE.Vector3(x, 1, z),
       start: () => { started = true; },
+      pause: () => {
+        if (!audio.paused) audio.pause();
+      },
       update: d => {
         if (!started) return;
-        if (d < 8) {
-          audio.volume = THREE.MathUtils.clamp((8 - d) / 6, 0, 1) * 0.85;
-          if (audio.paused) audio.play().catch(() => {});
-        } else if (!audio.paused) {
-          audio.pause();
+        // Intimate listening station range: only when near to that pedestal (within 3.4m)
+        const maxDist = 3.4;
+        if (d < maxDist) {
+          const vol = THREE.MathUtils.clamp((maxDist - d) / (maxDist - 0.4), 0, 1) * 0.8;
+          audio.volume = vol;
+          if (audio.paused && vol > 0.02) audio.play().catch(() => {});
+        } else {
+          audio.volume = 0;
+          if (!audio.paused) audio.pause();
         }
       }
     }
@@ -438,6 +452,36 @@ function modelPedestal(ex) {
   g.add(hi);
   g.userData = { exhibit: ex, highlight: hi };
 
+  let media;
+  const audioSrc = ex.audioSrc || (isRing ? '/assets/audio/the_one_ring_violin.mp3' : null);
+  if (audioSrc) {
+    const ringAudio = new Audio(audioSrc);
+    ringAudio.loop = true;
+    ringAudio.volume = 0;
+    let started = false;
+
+    media = {
+      pos: new THREE.Vector3(x, 1, z),
+      start: () => { started = true; },
+      pause: () => {
+        if (!ringAudio.paused) ringAudio.pause();
+      },
+      update: d => {
+        if (!started) return;
+        // Intimate monument range: only when near to that monument (within 3.2m)
+        const maxDist = 3.2;
+        if (d < maxDist) {
+          const vol = THREE.MathUtils.clamp((maxDist - d) / (maxDist - 0.4), 0, 1) * 0.75;
+          ringAudio.volume = vol;
+          if (ringAudio.paused && vol > 0.02) ringAudio.play().catch(() => {});
+        } else {
+          ringAudio.volume = 0;
+          if (!ringAudio.paused) ringAudio.pause();
+        }
+      }
+    };
+  }
+
   const rotator = {
     holder,
     isRing,
@@ -446,7 +490,7 @@ function modelPedestal(ex) {
     time: Math.random() * 10
   };
 
-  return { object: g, collider: box(x, z, 1.2, 1.2), rotator };
+  return { object: g, collider: box(x, z, 1.2, 1.2), rotator, media };
 }
 
 export async function buildExhibits(scene, colliders) {
@@ -462,9 +506,14 @@ export async function buildExhibits(scene, colliders) {
   }
   return {
     targets,
-    startMedia: () => medias.forEach(m => m.start()),
-    update: (cam, dt = 0.016) => {
-      medias.forEach(m => m.update(cam.position.distanceTo(m.pos)));
+    startMedia: () => medias.forEach(m => m.start && m.start()),
+    pauseAllMedia: () => medias.forEach(m => m.pause && m.pause()),
+    update: (cam, dt = 0.016, isPaused = false) => {
+      if (isPaused) {
+        medias.forEach(m => m.pause && m.pause());
+      } else {
+        medias.forEach(m => m.update && m.update(cam.position.distanceTo(m.pos)));
+      }
       rotators.forEach(r => {
         r.time += dt;
         r.holder.rotation.y += dt * r.speed;

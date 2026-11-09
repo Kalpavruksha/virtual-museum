@@ -70,9 +70,9 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
         img.src = ex.thumb;
         img.style.display = 'block';
       }
-      audioEl.src = ex.src;
-      audioWrap.style.display = 'block';
-      audioEl.play().catch(() => {});
+      // Audio is already playing smoothly via 3D proximity at the listening station!
+      // Do not restart or create overlapping audio.
+      audioWrap.style.display = 'none';
     } else if (ex.type === 'video') {
       videoEl.src = ex.src;
       videoWrap.style.display = 'block';
@@ -81,12 +81,9 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
       const thumb = ex.thumb || (ex.id === 'one_ring' ? '/assets/images/one_ring.png' : '/assets/images/eiffel.jpg');
       img.src = thumb;
       img.style.display = 'block';
-      if (ex.audioSrc || ex.id === 'one_ring') {
-        const audioSrc = ex.audioSrc || '/assets/audio/the_one_ring_violin.mp3';
-        audioEl.src = audioSrc;
-        audioWrap.style.display = 'block';
-        audioEl.play().catch(() => {});
-      }
+      // The One Ring's violin audio is already playing smoothly via 3D proximity near the monument!
+      // Do not restart audioEl on every 'E' press.
+      audioWrap.style.display = 'none';
     }
 
     panel.classList.add('show');
@@ -97,11 +94,19 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
     open = false;
     panel.classList.remove('show');
 
-    // Pause any modal playback
+    // Pause and reset any modal playback
     const audioEl = $('#p-audio');
-    if (audioEl) { audioEl.pause(); audioEl.currentTime = 0; }
+    if (audioEl) {
+      audioEl.pause();
+      audioEl.currentTime = 0;
+      audioEl.removeAttribute('src');
+    }
     const videoEl = $('#p-video');
-    if (videoEl) { videoEl.pause(); videoEl.currentTime = 0; }
+    if (videoEl) {
+      videoEl.pause();
+      videoEl.currentTime = 0;
+      videoEl.removeAttribute('src');
+    }
 
     controls.lock();
   }
@@ -111,7 +116,10 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
       if (open) close();
       else if (current) show(current.userData.exhibit);
     }
-    if (e.code === 'Escape' && open) close();
+    if ((e.code === 'Escape' || e.key === 'Escape') && open) {
+      e.preventDefault();
+      close();
+    }
   });
 
   // Clicking an exhibit in focus opens it directly
