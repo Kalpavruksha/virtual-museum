@@ -1,11 +1,16 @@
 // WebAudio helper: synthesised architectural footsteps, surface acoustics, and quiet gallery tone.
 let ctx, master, noiseBuf;
+let isMuted = false;
+let normalVolume = 0.65;
 
 export function initAudio() {
-  if (ctx) return;
+  if (ctx) {
+    resumeAudio();
+    return;
+  }
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   master = ctx.createGain();
-  master.gain.value = 0.65;
+  master.gain.value = isMuted ? 0 : normalVolume;
   master.connect(ctx.destination);
 
   // Generate 1 second of white noise buffer
@@ -29,9 +34,35 @@ export function initAudio() {
   roomSrc.start();
 }
 
+export function resumeAudio() {
+  if (ctx && ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
+}
+
+export function setMuted(muted) {
+  isMuted = !!muted;
+  if (master && ctx) {
+    master.gain.setValueAtTime(isMuted ? 0 : normalVolume, ctx.currentTime);
+  }
+  // Also mute/unmute any global audio elements
+  document.querySelectorAll('audio, video').forEach(el => {
+    el.muted = isMuted;
+  });
+  return isMuted;
+}
+
+export function toggleMute() {
+  return setMuted(!isMuted);
+}
+
+export function isAudioMuted() {
+  return isMuted;
+}
+
 /** Footstep sound with surface variation (marble vs parquet) and sprint cadence */
 export function footstep(sprint = false, surface = 'parquet') {
-  if (!ctx || ctx.state !== 'running') return;
+  if (isMuted || !ctx || ctx.state !== 'running') return;
   const t = ctx.currentTime;
 
   const src = ctx.createBufferSource();

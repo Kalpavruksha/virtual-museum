@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Virtual Museum</title>
 <style>
 @font-face {
@@ -129,8 +129,9 @@ button:hover {
   z-index: 5;
   pointer-events: none;
 }
-/* On-Screen Room Header Banner HUD */
+/* On-Screen Room Header Banner HUD (hidden in favor of 3D architectural wall tablets) */
 .room-hud {
+  display: none !important;
   position: fixed;
   top: 22px;
   left: 50%;
@@ -478,40 +479,495 @@ button:hover {
   box-shadow: 0 0 10px var(--gold-glow);
 }
 
-/* Mobile Virtual Joystick */
-.touch-joystick {
+/* Mobile Controls Container - Hidden by default on desktop, visible on touch devices */
+.mobile-controls {
+  display: none;
   position: fixed;
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  border: 2px solid rgba(232, 195, 106, 0.45);
-  background: rgba(14, 12, 10, 0.35);
-  transform: translate(-50%, -50%);
+  inset: 0;
   pointer-events: none;
-  z-index: 12;
+  z-index: 10;
+  user-select: none;
+  -webkit-user-select: none;
 }
-.touch-joystick-thumb {
+
+body.is-touch-device .mobile-controls,
+@media (pointer: coarse) and (hover: none) {
+  .mobile-controls {
+    display: block;
+  }
+  #cross {
+    opacity: 0.4;
+  }
+}
+
+/* Touch Movement Zone (Bottom-Left) */
+.joy-touch-zone {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 48vw;
+  height: 52vh;
+  pointer-events: auto;
+  touch-action: none;
+  z-index: 11;
+}
+
+/* Virtual Joystick Base */
+.joy-base {
+  position: absolute;
+  left: calc(24px + env(safe-area-inset-left));
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  width: 114px;
+  height: 114px;
+  border-radius: 50%;
+  border: 2px solid rgba(232, 195, 106, 0.4);
+  background: radial-gradient(circle at center, rgba(30, 24, 18, 0.65) 0%, rgba(12, 10, 8, 0.85) 100%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7), inset 0 0 16px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.joy-base.active {
+  border-color: rgba(232, 195, 106, 0.85);
+  box-shadow: 0 0 16px var(--gold-glow), inset 0 0 20px rgba(232, 195, 106, 0.2);
+}
+.joy-ring {
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 1px dashed rgba(232, 195, 106, 0.25);
+}
+.joy-thumb {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: rgba(232, 195, 106, 0.7);
-  box-shadow: 0 0 10px rgba(232, 195, 106, 0.5);
+  background: radial-gradient(circle at 35% 35%, #ffd988 0%, #b8975a 60%, #684e20 100%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.75), 0 0 12px rgba(232, 195, 106, 0.4);
+  border: 1.5px solid rgba(255, 240, 200, 0.6);
   transform: translate(-50%, -50%);
+  transition: transform 0.08s ease-out;
+}
+.joy-base.active .joy-thumb {
+  transition: none;
+}
+.joy-dir {
+  position: absolute;
+  font-size: 10px;
+  color: rgba(232, 195, 106, 0.35);
+  transform: translate(-50%, -50%);
+}
+.dir-n { top: 12px; left: 50%; }
+.dir-s { bottom: 4px; left: 50%; }
+.dir-w { top: 50%; left: 12px; }
+.dir-e { top: 50%; right: 4px; }
+
+/* Camera Look Zone (Right Side) */
+.look-touch-zone {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 52vw;
+  height: 100%;
+  pointer-events: auto;
+  touch-action: none;
+  z-index: 10;
+}
+
+/* Action Buttons (Bottom-Right) */
+.mobile-action-bar {
+  position: absolute;
+  right: calc(20px + env(safe-area-inset-right));
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-end;
+  pointer-events: auto;
+  z-index: 14;
+}
+
+.m-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(14, 12, 10, 0.88);
+  border: 1.5px solid rgba(184, 151, 90, 0.5);
+  border-radius: 28px;
+  color: var(--gold2);
+  font: 700 0.78rem 'Aniron', Georgia, serif;
+  letter-spacing: 0.12em;
+  padding: 10px 18px;
+  min-height: 48px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.75);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(8px);
+}
+.m-btn:active {
+  transform: scale(0.94);
+  background: var(--gold);
+  color: var(--ink);
+  box-shadow: 0 0 20px var(--gold-glow);
+}
+.m-btn .m-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+/* Sprint Button */
+.btn-sprint {
+  min-width: 96px;
+}
+.btn-sprint.active {
+  background: linear-gradient(135deg, #e8c36a, #b8975a);
+  color: #12100d;
+  border-color: #ffd880;
+  box-shadow: 0 0 16px rgba(232, 195, 106, 0.6);
+}
+
+/* Interact Button with Golden Pulsing Glow when Exhibit in Focus */
+.btn-interact {
+  min-width: 124px;
+  padding: 12px 20px;
+  font-size: 0.82rem;
+  border-color: rgba(232, 195, 106, 0.45);
+}
+.btn-interact.can-interact {
+  border-color: #ffd880;
+  color: #fff2d0;
+  background: rgba(28, 22, 14, 0.94);
+  box-shadow: 0 0 22px rgba(232, 195, 106, 0.7), inset 0 0 12px rgba(232, 195, 106, 0.35);
+  animation: pulseInteract 1.4s infinite alternate ease-in-out;
+}
+@keyframes pulseInteract {
+  0% { transform: scale(1); box-shadow: 0 0 14px rgba(232, 195, 106, 0.45); }
+  100% { transform: scale(1.05); box-shadow: 0 0 26px rgba(232, 195, 106, 0.85); }
+}
+
+/* Header Top Controls */
+.mobile-top-bar-left {
+  position: absolute;
+  left: calc(16px + env(safe-area-inset-left));
+  top: calc(16px + env(safe-area-inset-top));
+  pointer-events: auto;
+  z-index: 14;
+}
+.mobile-top-bar-right {
+  position: absolute;
+  right: calc(16px + env(safe-area-inset-right));
+  top: calc(16px + env(safe-area-inset-top));
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  pointer-events: auto;
+  z-index: 14;
+}
+
+.m-pill-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(14, 12, 10, 0.85);
+  border: 1px solid rgba(184, 151, 90, 0.45);
+  border-radius: 20px;
+  color: var(--gold2);
+  font: 700 0.74rem 'Aniron', Georgia, serif;
+  letter-spacing: 0.1em;
+  padding: 6px 14px;
+  min-height: 38px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.2s ease;
+}
+.m-pill-btn:active {
+  transform: scale(0.94);
+  background: var(--gold);
+  color: var(--ink);
+}
+.m-pill-btn.m-icon-only {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1rem;
+}
+
+/* Museum Menu Modal */
+.menu-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 5, 4, 0.88);
+  backdrop-filter: blur(12px);
+  z-index: 30;
+  padding: 1.5rem;
+}
+.menu-modal.show {
+  display: flex;
+  animation: panelFade .24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.menu-card {
+  position: relative;
+  max-width: 520px;
+  width: 92vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: #12100d;
+  border: 1.5px solid var(--gold);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.9), 0 0 28px var(--gold-glow);
+  padding: 1.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  border-radius: 4px;
+}
+.menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(184, 151, 90, 0.3);
+  padding-bottom: 0.8rem;
+}
+.menu-header h2 {
+  margin: 0;
+  font-size: 1.45rem;
+  color: var(--gold2);
+  letter-spacing: 0.14em;
+}
+.menu-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.menu-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  color: #9c917c;
+  font-weight: 700;
+}
+.teleport-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.teleport-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(22, 18, 14, 0.85);
+  border: 1px solid rgba(184, 151, 90, 0.35);
+  border-radius: 3px;
+  color: #e8dcc4;
+  font: 500 0.72rem 'Aniron', Georgia, serif;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.teleport-btn:active, .teleport-btn:hover {
+  background: rgba(184, 151, 90, 0.2);
+  border-color: var(--gold);
+  color: var(--gold2);
+}
+.tp-num {
+  font-weight: 700;
+  color: var(--gold);
+  font-size: 0.8rem;
+}
+.tp-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menu-quality-row, .menu-options-row {
+  display: flex;
+  gap: 8px;
+}
+.menu-q-btn {
+  flex: 1;
+  padding: 8px 4px;
+  text-align: center;
+}
+.m-outline-btn {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(20, 16, 12, 0.8);
+  border: 1px solid rgba(184, 151, 90, 0.4);
+  color: var(--gold2);
+  font: 600 0.75rem 'Aniron', Georgia, serif;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+.menu-controls-text {
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: #b0a48e;
+  background: rgba(8, 7, 6, 0.65);
+  padding: 8px 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(184, 151, 90, 0.2);
+}
+.ctrl-row span {
+  color: var(--gold);
+  font-weight: 700;
+}
+.menu-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.4rem;
+}
+.resume-btn {
+  width: 100%;
+  padding: 12px 24px;
+  background: var(--gold);
+  color: var(--ink);
+  font: 700 0.85rem 'Aniron', Georgia, serif;
+  letter-spacing: 0.18em;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 16px var(--gold-glow);
+}
+
+/* Minimap Mobile Positioning */
+@media (max-width: 768px) {
+  #minimap {
+    width: 68px !important;
+    height: 196px !important;
+    right: calc(14px + env(safe-area-inset-right));
+    top: calc(62px + env(safe-area-inset-top));
+    bottom: auto !important;
+    opacity: 0.85;
+    border-radius: 4px;
+  }
+  .quality-selector {
+    display: none; /* Quality accessible via MENU button on mobile */
+  }
 }
 </style>
 </head>
 <body>
-<div id="joyBase" class="touch-joystick" style="display:none;">
-  <div id="joyThumb" class="touch-joystick-thumb"></div>
+<!-- Mobile Game-Style Controls -->
+<div id="mobileControls" class="mobile-controls">
+  <!-- Left Side: Movement Touch Zone & Virtual Joystick -->
+  <div id="joyZone" class="joy-touch-zone">
+    <div id="joyBase" class="joy-base">
+      <div class="joy-ring"></div>
+      <div id="joyThumb" class="joy-thumb"></div>
+      <span class="joy-dir dir-n">▲</span>
+      <span class="joy-dir dir-s">▼</span>
+      <span class="joy-dir dir-w">◀</span>
+      <span class="joy-dir dir-e">▶</span>
+    </div>
+  </div>
+
+  <!-- Right Side: Camera Look Zone -->
+  <div id="lookZone" class="look-touch-zone"></div>
+
+  <!-- Bottom Right Action Buttons -->
+  <div class="mobile-action-bar">
+    <button id="btnSprint" class="m-btn btn-sprint" aria-label="Toggle Sprint">
+      <span class="m-icon">⚡</span>
+      <span class="m-text">SPRINT</span>
+    </button>
+    <button id="btnInteract" class="m-btn btn-interact" aria-label="Interact with exhibit">
+      <span class="m-icon">✦</span>
+      <span class="m-text">INTERACT</span>
+    </button>
+  </div>
+
+  <!-- Top Left Menu Button -->
+  <div class="mobile-top-bar-left">
+    <button id="btnMenu" class="m-pill-btn" aria-label="Museum Menu">
+      <span class="m-icon">☰</span>
+      <span class="m-text">MENU</span>
+    </button>
+  </div>
+
+  <!-- Top Right Audio & Fullscreen Buttons -->
+  <div class="mobile-top-bar-right">
+    <button id="btnSound" class="m-pill-btn m-icon-only" aria-label="Toggle Sound">
+      <span id="soundIcon">🔊</span>
+    </button>
+    <button id="btnFullscreen" class="m-pill-btn m-icon-only" aria-label="Toggle Fullscreen">
+      <span id="fsIcon">⛶</span>
+    </button>
+  </div>
 </div>
+
+<!-- Museum Menu Modal -->
+<div id="menuModal" class="menu-modal">
+  <div class="menu-card">
+    <div class="menu-header">
+      <h2>Museum Menu</h2>
+      <button id="menuCloseBtn" class="p-close-x" title="Close (Esc)">✕</button>
+    </div>
+    <div class="menu-section">
+      <div class="menu-label">GALLERY WINGS · QUICK TRAVEL</div>
+      <div class="teleport-grid">
+        <button class="teleport-btn" data-room="hall" data-x="0" data-z="4.4" data-yaw="0">
+          <span class="tp-num">I</span>
+          <span class="tp-name">Grand Entrance Hall</span>
+        </button>
+        <button class="teleport-btn" data-room="paintings" data-x="0" data-z="-13" data-yaw="0">
+          <span class="tp-num">II</span>
+          <span class="tp-name">Paintings Gallery</span>
+        </button>
+        <button class="teleport-btn" data-room="music" data-x="0" data-z="-27" data-yaw="0">
+          <span class="tp-num">III</span>
+          <span class="tp-name">Music & Instruments Hall</span>
+        </button>
+        <button class="teleport-btn" data-room="history" data-x="0" data-z="-41" data-yaw="0">
+          <span class="tp-num">IV</span>
+          <span class="tp-name">History & Science Room</span>
+        </button>
+      </div>
+    </div>
+    <div class="menu-section">
+      <div class="menu-label">GRAPHICS QUALITY</div>
+      <div class="menu-quality-row">
+        <button data-q="low" class="q-btn menu-q-btn">LOW</button>
+        <button data-q="medium" class="q-btn menu-q-btn">MEDIUM</button>
+        <button data-q="high" class="q-btn menu-q-btn">HIGH</button>
+        <button data-q="auto" class="q-btn menu-q-btn">AUTO</button>
+      </div>
+    </div>
+    <div class="menu-section">
+      <div class="menu-label">AUDIO & VIEW</div>
+      <div class="menu-options-row">
+        <button id="menuSoundBtn" class="m-outline-btn"><span>🔊</span> Sound: ON</button>
+        <button id="menuFsBtn" class="m-outline-btn"><span>⛶</span> Fullscreen</button>
+      </div>
+    </div>
+    <div class="menu-section">
+      <div class="menu-label">CONTROLS GUIDE</div>
+      <div class="menu-controls-text">
+        <div class="ctrl-row"><span>Mobile:</span> Left joystick move · Right drag look · Tap artwork or Interact button to inspect · Sprint button to run</div>
+        <div class="ctrl-row"><span>Desktop:</span> WASD / Arrows move · Shift sprint · Mouse look · E inspect · Esc pause</div>
+      </div>
+    </div>
+    <div class="menu-actions">
+      <button id="menuResumeBtn" class="resume-btn">RESUME TOUR</button>
+    </div>
+  </div>
+</div>
+
 <div id="qualityPill" class="quality-selector">
   <span class="q-label">QUALITY</span>
   <button data-q="low" class="q-btn">LOW</button>
   <button data-q="medium" class="q-btn">MED</button>
-  <button data-q="high" class="q-btn active">HIGH</button>
+  <button data-q="high" class="q-btn">HIGH</button>
+  <button data-q="auto" class="q-btn active">AUTO</button>
 </div>
 <div id="loading" class="overlay">
   <h1>Museum</h1>

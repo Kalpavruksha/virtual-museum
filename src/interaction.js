@@ -3,11 +3,14 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-export function createInteraction({ camera, targets, blockers, controls, prompt, panel }) {
+export function createInteraction({ camera, targets, blockers, controls, player, prompt, panel }) {
   const ray = new THREE.Raycaster();
   ray.far = 4.8;
   const all = [...targets, ...blockers];
   let current = null, open = false;
+
+  const btnInteract = document.getElementById('btnInteract');
+  const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(pointer: coarse)').matches;
 
   const owner = o => {
     let cur = o;
@@ -84,11 +87,36 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
       dragging = false;
       idleTimer = setTimeout(() => { userInteracting = false; }, 2500);
     };
+    let initPinchDist = 0;
+    const onTouchStartModal = e => {
+      if (e.touches && e.touches.length === 2) {
+        initPinchDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      } else {
+        onDown(e);
+      }
+    };
+    const onTouchMoveModal = e => {
+      if (e.touches && e.touches.length === 2) {
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const delta = (initPinchDist - dist) * 0.008;
+        initPinchDist = dist;
+        modalCamera.position.z = THREE.MathUtils.clamp(modalCamera.position.z + delta, 0.8, 5.0);
+      } else {
+        onMove(e);
+      }
+    };
+
     canvas.addEventListener('mousedown', onDown);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-    canvas.addEventListener('touchstart', onDown, { passive: true });
-    window.addEventListener('touchmove', onMove, { passive: true });
+    canvas.addEventListener('touchstart', onTouchStartModal, { passive: true });
+    window.addEventListener('touchmove', onTouchMoveModal, { passive: true });
     window.addEventListener('touchend', onUp, { passive: true });
 
     canvas.addEventListener('wheel', e => {
@@ -234,25 +262,38 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
 
   function update() {
     let found = null;
-    if (controls.isLocked && !open) {
+    const isControlActive = (player ? player.isActive() : controls.isLocked) && !open;
+
+    if (isControlActive) {
       ray.setFromCamera({ x: 0, y: 0 }, camera);
       const hit = ray.intersectObjects(all, true)[0];
       if (hit) found = owner(hit.object);
     }
+
     if (found !== current) {
       if (current && current.userData?.highlight) current.userData.highlight.visible = false;
       if (found && found.userData?.highlight) found.userData.highlight.visible = true;
       current = found;
     }
+
+    if (btnInteract) {
+      btnInteract.classList.toggle('can-interact', !!current);
+    }
+
     prompt.style.opacity = current ? 1 : 0;
     prompt.style.transform = current ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(8px)';
     if (current) {
-      prompt.textContent = `Press E to inspect · ${current.userData.exhibit.title}`;
+      const isTouch = isTouchDevice || document.body.classList.contains('is-touch-device');
+      prompt.textContent = isTouch
+        ? `Tap artwork or press Interact · ${current.userData.exhibit.title}`
+        : `Press E to inspect · ${current.userData.exhibit.title}`;
     }
   }
 
   function show(ex) {
+    if (!ex) return;
     open = true;
+    player?.setModalOpen?.(true);
     controls.unlock();
 
     $('#p-title').textContent = ex.title;
@@ -282,14 +323,13 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
         img.src = ex.thumb;
         img.style.display = 'block';
       }
-      // Audio is already playing smoothly via 3D proximity at the listening station!
+      // Audio plays via 3D proximity at listening station
       audioWrap.style.display = 'none';
     } else if (ex.type === 'video') {
       videoEl.src = ex.src;
       videoWrap.style.display = 'block';
       videoEl.play().catch(() => {});
     } else if (ex.type === 'model') {
-      // Show the ACTUAL interactive 3D model in the modal!
       startModelViewer(ex);
     }
 
@@ -304,6 +344,7 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
     open = false;
     panel.classList.remove('show');
     stopModelViewer();
+    player?.setModalOpen?.(false);
 
     const inscrWrap = $('#p-inscription-wrap');
     if (inscrWrap) inscrWrap.style.display = 'none';
@@ -322,7 +363,55 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
       videoEl.removeAttribute('src');
     }
 
-    controls.lock();
+    const isTouch = isTouchDevice || document.body.classList.contains('is-touch-device');
+    if (!isTouch) {
+      controls.lock();
+    }
+  }
+
+  function interact() {
+    if (open) {
+      close();
+    } else if (current) {
+      show(current.userData.exhibit);
+    } else {
+      // Find nearest exhibit in front
+      ray.setFromCamera({ x: 0, y: 0 }, camera);
+      const hit = ray.intersectObjects(all, true)[0];
+      if (hit) {
+        const found = owner(hit.object);
+        if (found) show(found.userData.exhibit);
+      }
+    }
+  }
+
+  function tapSelect(clientX, clientY) {
+    if (open) return false;
+    const mouse = {
+      x: (clientX / window.innerWidth) * 2 - 1,
+      y: -(clientY / window.innerHeight) * 2 + 1
+    };
+    ray.setFromCamera(mouse, camera);
+    const hit = ray.intersectObjects(all, true)[0];
+    if (hit) {
+      const found = owner(hit.object);
+      if (found) {
+        show(found.userData.exhibit);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Bind dedicated mobile interact button
+  if (btnInteract) {
+    const onInteractTap = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      interact();
+    };
+    btnInteract.addEventListener('touchstart', onInteractTap, { passive: false });
+    btnInteract.addEventListener('click', onInteractTap);
   }
 
   addEventListener('keydown', e => {
@@ -339,7 +428,7 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
   // Clicking an exhibit in focus opens it directly
   window.addEventListener('click', e => {
     if (open) return;
-    if (e.target.tagName === 'BUTTON' || panel.contains(e.target)) return;
+    if (e.target.tagName === 'BUTTON' || panel.contains(e.target) || e.target.closest('#mobileControls')) return;
     if (current) {
       show(current.userData.exhibit);
     } else {
@@ -364,5 +453,5 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
     if (e.target === panel) close();
   });
 
-  return { update, isOpen: () => open, close };
+  return { update, isOpen: () => open, close, show, interact, tapSelect };
 }

@@ -11,7 +11,7 @@ import { buildExhibits } from './exhibits.js';
 import { createPlayer } from './player.js';
 import { createInteraction } from './interaction.js';
 import { createMinimap } from './minimap.js';
-import { initAudio } from './audio.js';
+import { initAudio, toggleMute, isAudioMuted, setMuted, resumeAudio } from './audio.js';
 
 const $ = id => document.getElementById(id);
 
@@ -29,19 +29,46 @@ THREE.DefaultLoadingManager.onLoad = () => {
   }, 400);
 };
 
+// Device & Hardware Capability Detection
+const isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(pointer: coarse)').matches;
+if (isMobileDevice) {
+  document.body.classList.add('is-touch-device');
+}
+
 const savedQ = localStorage.getItem('museum_quality');
 const urlQ = new URLSearchParams(location.search).get('q');
-const quality = urlQ || savedQ || 'high'; // ?q=low|medium|high
+const qualitySetting = urlQ || savedQ || (isMobileDevice ? 'auto' : 'high'); // low | medium | high | auto
+
+function resolveQuality(setting) {
+  if (setting === 'auto') {
+    if (isMobileDevice) {
+      return { id: 'medium', pr: Math.min(window.devicePixelRatio, 1.25), bloom: false, reflector: false, shadows: true, antialias: true };
+    }
+    return { id: 'high', pr: Math.min(window.devicePixelRatio, 1.5), bloom: true, reflector: true, reflectorRes: 512, shadows: true, antialias: true };
+  }
+  return {
+    low: { id: 'low', pr: 1.0, bloom: false, reflector: false, shadows: false, antialias: false },
+    medium: { id: 'medium', pr: Math.min(window.devicePixelRatio, 1.25), bloom: false, reflector: true, reflectorRes: 512, shadows: true, antialias: true },
+    high: { id: 'high', pr: Math.min(window.devicePixelRatio, isMobileDevice ? 1.5 : 2.0), bloom: true, reflector: true, reflectorRes: isMobileDevice ? 512 : 1024, shadows: true, antialias: true }
+  }[setting] || { id: 'medium', pr: 1.2, bloom: false, reflector: false, shadows: true, antialias: true };
+}
+
+const Q = resolveQuality(qualitySetting);
 
 // Update active state and bind click handlers for quality buttons
-document.querySelectorAll('.q-btn').forEach(btn => {
-  if (btn.dataset.q === quality) btn.classList.add('active');
-  else btn.classList.remove('active');
+function updateQualityUI(currentQ) {
+  document.querySelectorAll('.q-btn').forEach(btn => {
+    if (btn.dataset.q === currentQ) btn.classList.add('active');
+    else btn.classList.remove('active');
+  });
+}
+updateQualityUI(qualitySetting);
 
+document.querySelectorAll('.q-btn').forEach(btn => {
   btn.addEventListener('click', e => {
     e.stopPropagation();
     const newQ = btn.dataset.q;
-    if (newQ !== quality) {
+    if (newQ !== qualitySetting) {
       localStorage.setItem('museum_quality', newQ);
       const url = new URL(location.href);
       url.searchParams.set('q', newQ);
@@ -49,13 +76,8 @@ document.querySelectorAll('.q-btn').forEach(btn => {
     }
   });
 });
-const Q = {
-  low: { pr: 1, bloom: false, reflector: false, shadows: false },
-  medium: { pr: Math.min(devicePixelRatio, 1.5), bloom: false, reflector: true, reflectorRes: 512, shadows: true },
-  high: { pr: Math.min(devicePixelRatio, 2), bloom: true, reflector: true, reflectorRes: 1024, shadows: true }
-}[quality] || { pr: 1, bloom: true, reflector: true, reflectorRes: 1024, shadows: true };
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ antialias: Q.antialias !== false, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Q.pr);
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -123,86 +145,140 @@ try {
 
 const { colliders, blockers } = buildArchitecture(scene, Q);
 const exhibits = await buildExhibits(scene, colliders);
-const player = createPlayer(camera, renderer.domElement, colliders);
-const interaction = createInteraction({
+
+// Wire Player & Interaction with mobile tap-to-select support
+let interaction;
+const player = createPlayer(camera, renderer.domElement, colliders, {
+  onTap: (x, y) => {
+    if (interaction) interaction.tapSelect(x, y);
+  }
+});
+
+interaction = createInteraction({
   camera,
   targets: exhibits.targets,
   blockers,
   controls: player.controls,
+  player,
   prompt: $('prompt'),
   panel: $('panel')
 });
+
 const drawMap = createMinimap($('minimap'));
-
-// Room heading HUD management
-const roomHud = $('roomHud');
-const roomHudTitle = $('roomHudTitle');
-const roomHudSub = $('roomHudSub');
-
-const ROOM_HEADERS = {
-  hall: {
-    title: 'GRAND ENTRANCE HALL',
-    sub: 'Classical Antiquity · Architecture · Leonardo da Vinci'
-  },
-  paintings: {
-    title: 'PAINTINGS GALLERY',
-    sub: 'Masterpieces of Light & Form · Renaissance to Surrealism'
-  },
-  music: {
-    title: 'MUSIC & INSTRUMENTS HALL',
-    sub: 'Ancient Resonance · Acoustic Innovations · Symphonies'
-  },
-  history: {
-    title: 'HISTORY & SCIENCE ROOM',
-    sub: 'Human Achievement · Space Exploration · The One Ring'
-  }
-};
-
-let activeRoomId = null;
-function updateRoomHeading(cz) {
-  let roomId = 'hall';
-  if (cz <= -34) roomId = 'history';
-  else if (cz <= -20) roomId = 'music';
-  else if (cz <= -6) roomId = 'paintings';
-
-  const shouldShow = player.controls.isLocked && !interaction.isOpen();
-
-  if (roomId !== activeRoomId) {
-    activeRoomId = roomId;
-    const info = ROOM_HEADERS[roomId];
-    if (roomHudTitle) roomHudTitle.textContent = info.title;
-    if (roomHudSub) roomHudSub.textContent = info.sub;
-  }
-
-  if (roomHud) {
-    roomHud.style.opacity = shouldShow ? '1' : '0';
-    roomHud.style.transform = shouldShow ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(-10px)';
-  }
-}
 
 $('loading')?.classList.add('hide');
 
+// Adapt Start Screen text for mobile vs desktop
+if (isMobileDevice) {
+  const startBtn = $('startBtn');
+  if (startBtn) startBtn.textContent = 'Tap to enter';
+  const keysEl = document.querySelector('.keys');
+  if (keysEl) keysEl.textContent = 'Left joystick move · Drag right look · Tap or Interact to inspect';
+}
+
 const enterMuseum = () => {
   initAudio();
+  resumeAudio();
   exhibits.startMedia();
-  player.controls.lock();
+  player.startTour();
+  $('start').classList.add('hide');
+  if (!player.isMobile()) {
+    player.controls.lock();
+  }
 };
+
 $('start').addEventListener('click', enterMuseum);
 $('startBtn')?.addEventListener('click', e => {
   e.stopPropagation();
   enterMuseum();
 });
+
 player.controls.addEventListener('lock', () => {
   $('start').classList.add('hide');
   exhibits.startMedia();
 });
+
 player.controls.addEventListener('unlock', () => {
-  if (!interaction.isOpen()) {
+  if (!interaction.isOpen() && !player.isMobile()) {
     $('start').classList.remove('hide');
     exhibits.pauseAllMedia();
   }
 });
 
+// --- Mobile Museum Menu Modal Management ---
+const menuModal = $('menuModal');
+const openMenu = () => {
+  if (interaction.isOpen()) interaction.close();
+  menuModal?.classList.add('show');
+  player.setModalOpen(true);
+};
+const closeMenu = () => {
+  menuModal?.classList.remove('show');
+  player.setModalOpen(false);
+};
+
+$('btnMenu')?.addEventListener('click', e => {
+  e.stopPropagation();
+  openMenu();
+});
+$('menuCloseBtn')?.addEventListener('click', closeMenu);
+$('menuResumeBtn')?.addEventListener('click', closeMenu);
+menuModal?.addEventListener('click', e => {
+  if (e.target === menuModal) closeMenu();
+});
+
+// Teleport buttons inside Museum Menu
+document.querySelectorAll('.teleport-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const x = parseFloat(btn.dataset.x) || 0;
+    const z = parseFloat(btn.dataset.z) || 0;
+    const yaw = parseFloat(btn.dataset.yaw) || 0;
+    camera.position.set(x, 1.6, z);
+    camera.rotation.set(0, yaw, 0);
+    closeMenu();
+  });
+});
+
+// --- Sound Controls ---
+function updateSoundUI() {
+  const muted = isAudioMuted();
+  const icon = muted ? '🔇' : '🔊';
+  const soundIcon = $('soundIcon');
+  if (soundIcon) soundIcon.textContent = icon;
+  const menuSoundBtn = $('menuSoundBtn');
+  if (menuSoundBtn) menuSoundBtn.innerHTML = `<span>${icon}</span> Sound: ${muted ? 'OFF' : 'ON'}`;
+}
+
+const handleSoundToggle = e => {
+  e?.stopPropagation();
+  toggleMute();
+  updateSoundUI();
+};
+$('btnSound')?.addEventListener('click', handleSoundToggle);
+$('menuSoundBtn')?.addEventListener('click', handleSoundToggle);
+
+// --- Fullscreen Controls ---
+function updateFsUI() {
+  const isFs = !!document.fullscreenElement;
+  const fsIcon = $('fsIcon');
+  if (fsIcon) fsIcon.textContent = isFs ? '✕' : '⛶';
+  const menuFsBtn = $('menuFsBtn');
+  if (menuFsBtn) menuFsBtn.innerHTML = `<span>${isFs ? '✕' : '⛶'}</span> Fullscreen: ${isFs ? 'ON' : 'OFF'}`;
+}
+
+const handleFsToggle = e => {
+  e?.stopPropagation();
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen?.().catch(() => {});
+  } else {
+    document.exitFullscreen?.().catch(() => {});
+  }
+};
+$('btnFullscreen')?.addEventListener('click', handleFsToggle);
+$('menuFsBtn')?.addEventListener('click', handleFsToggle);
+document.addEventListener('fullscreenchange', updateFsUI);
+
+// --- Responsive Window Resize ---
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
@@ -210,23 +286,63 @@ addEventListener('resize', () => {
   composer?.setSize(innerWidth, innerHeight);
 });
 
+// --- Background Tab Throttling (battery & thermal savings) ---
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    exhibits.pauseAllMedia();
+  } else {
+    resumeAudio();
+    if (player.isActive()) {
+      exhibits.startMedia();
+    }
+  }
+});
+
+// Expose for testing & debug
 window.__museum = {
   camera,
   teleport: (x, z, yaw = 0) => {
     camera.position.set(x, 1.6, z);
     camera.rotation.set(0, yaw, 0);
   },
-  colliders
+  colliders,
+  player,
+  interaction
 };
+
+// Adaptive performance measurement
+let frameCount = 0;
+let lastFpsCheck = performance.now();
+const fpsHistory = [];
+
+function monitorAdaptivePerformance() {
+  if (qualitySetting !== 'auto') return;
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsCheck >= 1000) {
+    const fps = Math.round((frameCount * 1000) / (now - lastFpsCheck));
+    frameCount = 0;
+    lastFpsCheck = now;
+    fpsHistory.push(fps);
+    if (fpsHistory.length > 3) fpsHistory.shift();
+
+    const avgFps = fpsHistory.reduce((a, b) => a + b, 0) / fpsHistory.length;
+    if (avgFps < 28 && renderer.getPixelRatio() > 1.0) {
+      renderer.setPixelRatio(1.0);
+    }
+  }
+}
 
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
-  const isPaused = !player.controls.isLocked && !interaction.isOpen();
+  const isPaused = !player.isActive();
+
   player.update(dt);
   interaction.update();
   exhibits.update(camera, dt, isPaused);
   drawMap(camera);
-  updateRoomHeading(camera.position.z);
+  monitorAdaptivePerformance();
+
   composer ? composer.render() : renderer.render(scene, camera);
 });
