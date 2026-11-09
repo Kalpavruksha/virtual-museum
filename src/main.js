@@ -29,7 +29,26 @@ THREE.DefaultLoadingManager.onLoad = () => {
   }, 400);
 };
 
-const quality = new URLSearchParams(location.search).get('q') || 'high'; // ?q=low|medium|high
+const savedQ = localStorage.getItem('museum_quality');
+const urlQ = new URLSearchParams(location.search).get('q');
+const quality = urlQ || savedQ || 'high'; // ?q=low|medium|high
+
+// Update active state and bind click handlers for quality buttons
+document.querySelectorAll('.q-btn').forEach(btn => {
+  if (btn.dataset.q === quality) btn.classList.add('active');
+  else btn.classList.remove('active');
+
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const newQ = btn.dataset.q;
+    if (newQ !== quality) {
+      localStorage.setItem('museum_quality', newQ);
+      const url = new URL(location.href);
+      url.searchParams.set('q', newQ);
+      location.href = url.toString();
+    }
+  });
+});
 const Q = {
   low: { pr: 1, bloom: false, reflector: false, shadows: false },
   medium: { pr: Math.min(devicePixelRatio, 1.5), bloom: false, reflector: true, reflectorRes: 512, shadows: true },

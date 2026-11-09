@@ -18,6 +18,23 @@ export function createPlayer(camera, dom, colliders) {
   let lastLookPos = { x: 0, y: 0 };
   let isMobileTouch = false;
 
+  const joyBase = document.getElementById('joyBase');
+  const joyThumb = document.getElementById('joyThumb');
+  const showJoy = (x, y) => {
+    if (!joyBase) return;
+    joyBase.style.left = `${x}px`;
+    joyBase.style.top = `${y}px`;
+    joyBase.style.display = 'block';
+    if (joyThumb) joyThumb.style.transform = 'translate(-50%, -50%)';
+  };
+  const updateJoy = (ox, oy, maxRadius = 45) => {
+    if (!joyThumb) return;
+    joyThumb.style.transform = `translate(calc(-50% + ${ox * maxRadius}px), calc(-50% + ${oy * maxRadius}px))`;
+  };
+  const hideJoy = () => {
+    if (joyBase) joyBase.style.display = 'none';
+  };
+
   dom.addEventListener('touchstart', e => {
     isMobileTouch = true;
     for (let i = 0; i < e.changedTouches.length; i++) {
@@ -26,6 +43,7 @@ export function createPlayer(camera, dom, colliders) {
         moveTouchId = t.identifier;
         joyOrigin = { x: t.clientX, y: t.clientY };
         joyOffset = { x: 0, y: 0 };
+        showJoy(t.clientX, t.clientY);
       } else if (t.clientX >= window.innerWidth / 2 && lookTouchId === null) {
         lookTouchId = t.identifier;
         lastLookPos = { x: t.clientX, y: t.clientY };
@@ -47,6 +65,7 @@ export function createPlayer(camera, dom, colliders) {
           x: (Math.cos(angle) * clampDist) / maxRadius,
           y: (Math.sin(angle) * clampDist) / maxRadius
         };
+        updateJoy(joyOffset.x, joyOffset.y, maxRadius);
       } else if (t.identifier === lookTouchId) {
         const dx = t.clientX - lastLookPos.x;
         const dy = t.clientY - lastLookPos.y;
@@ -65,6 +84,7 @@ export function createPlayer(camera, dom, colliders) {
       if (t.identifier === moveTouchId) {
         moveTouchId = null;
         joyOffset = { x: 0, y: 0 };
+        hideJoy();
       } else if (t.identifier === lookTouchId) {
         lookTouchId = null;
       }
