@@ -1,64 +1,185 @@
 import * as THREE from 'three';
+
 const loader = new THREE.TextureLoader();
 const cache = {};
 
-function canvasTex(draw, size = 512) {
+function canvasTex(draw, size = 512, srgb = true) {
   const c = document.createElement('canvas'); c.width = c.height = size;
   draw(c.getContext('2d'), size);
   const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
   return t;
 }
+
 const rnd = (a, b) => a + Math.random() * (b - a);
 
+/** Generates a seamless PBR normal map from a grayscale height generator */
+function generateNormalMap(heightFn, size = 512, strength = 2.5) {
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  const imgData = ctx.createImageData(size, size);
+  const data = imgData.data;
+
+  // Build height grid
+  const hGrid = new Float32Array(size * size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      hGrid[y * size + x] = heightFn(x, y, size);
+    }
+  }
+
+  // Calculate central-difference normals
+  for (let y = 0; y < size; y++) {
+    const ym = (y - 1 + size) % size, yp = (y + 1) % size;
+    for (let x = 0; x < size; x++) {
+      const xm = (x - 1 + size) % size, xp = (x + 1) % size;
+      const dx = (hGrid[y * size + xp] - hGrid[y * size + xm]) * strength;
+      const dy = (hGrid[yp * size + x] - hGrid[ym * size + x]) * strength;
+      const dz = 1.0;
+      const len = Math.hypot(dx, dy, dz);
+
+      const idx = (y * size + x) * 4;
+      data[idx]     = Math.floor(((dx / len) * 0.5 + 0.5) * 255);
+      data[idx + 1] = Math.floor(((-dy / len) * 0.5 + 0.5) * 255);
+      data[idx + 2] = Math.floor(((dz / len) * 0.5 + 0.5) * 255);
+      data[idx + 3] = 255;
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 8;
+  return t;
+}
+
 const PROC = {
-  marble: () => canvasTex((g, s) => {
-    g.fillStyle = '#d8d3cb'; g.fillRect(0, 0, s, s);
-    for (let i = 0; i < 40; i++) {
-      g.strokeStyle = `rgba(90,85,80,${rnd(0.04, 0.16)})`; g.lineWidth = rnd(0.5, 2.5); g.beginPath();
-      let x = rnd(0, s), y = rnd(0, s); g.moveTo(x, y);
-      for (let k = 0; k < 5; k++) { x += rnd(-90, 90); y += rnd(-90, 90); g.quadraticCurveTo(x + rnd(-40, 40), y + rnd(-40, 40), x, y); }
+  marbleDiff: () => canvasTex((g, s) => {
+    g.fillStyle = '#e5dfd5'; g.fillRect(0, 0, s, s);
+    // Subtle marble clouds
+    for (let i = 0; i < 30; i++) {
+      g.fillStyle = `rgba(180,172,160,${rnd(0.04, 0.12)})`;
+      g.beginPath();
+      g.arc(rnd(0, s), rnd(0, s), rnd(40, 140), 0, Math.PI * 2);
+      g.fill();
+    }
+    // Deep marble veins
+    for (let i = 0; i < 48; i++) {
+      g.strokeStyle = `rgba(75,70,65,${rnd(0.05, 0.2)})`;
+      g.lineWidth = rnd(0.6, 2.8);
+      g.beginPath();
+      let x = rnd(0, s), y = rnd(0, s);
+      g.moveTo(x, y);
+      for (let k = 0; k < 6; k++) {
+        x += rnd(-80, 80); y += rnd(-80, 80);
+        g.quadraticCurveTo(x + rnd(-40, 40), y + rnd(-40, 40), x, y);
+      }
       g.stroke();
     }
-    g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 3; g.strokeRect(0, 0, s, s); // tile seams
+    // Polished tile grid seams
+    g.strokeStyle = 'rgba(40,36,32,0.35)'; g.lineWidth = 4; g.strokeRect(0, 0, s, s);
   }),
-  parquet: () => canvasTex((g, s) => {
+  marbleNor: () => generateNormalMap((x, y, s) => {
+    // Bevel along tile boundary
+    const edgeDist = Math.min(x, s - 1 - x, y, s - 1 - y);
+    const seam = edgeDist < 6 ? edgeDist / 6 : 1.0;
+    // Micro noise
+    const noise = Math.sin(x * 0.05) * Math.cos(y * 0.05) * 0.08;
+    return seam + noise;
+  }, 512, 3.2),
+  marbleRough: () => canvasTex((g, s) => {
+    g.fillStyle = '#1e1e1e'; g.fillRect(0, 0, s, s); // 0.12 polished sheen
+    g.strokeStyle = '#bbbbbb'; g.lineWidth = 4; g.strokeRect(0, 0, s, s); // rough grout seam
+  }, 512, false),
+
+  parquetDiff: () => canvasTex((g, s) => {
     const cols = 8, w = s / cols, len = s / 2;
     for (let c = 0; c < cols; c++) for (let r = 0; r < 2; r++) {
-      const l = rnd(40, 58); g.fillStyle = `hsl(28,${rnd(45, 55)}%,${l - 14}%)`;
+      const l = rnd(40, 56);
+      g.fillStyle = `hsl(28,${rnd(42, 54)}%,${l - 12}%)`;
       g.fillRect(c * w, r * len + (c % 2) * len / 2 - len / 2, w - 1, len - 1);
       g.fillRect(c * w, r * len + (c % 2) * len / 2 + len / 2, w - 1, len - 1);
     }
-    for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(30,15,5,${rnd(0.02, 0.07)})`; g.fillRect(rnd(0, s), rnd(0, s), rnd(1, 3), rnd(6, 30)); }
+    // Wood grain streaks
+    for (let i = 0; i < 1200; i++) {
+      g.fillStyle = `rgba(25,12,4,${rnd(0.02, 0.08)})`;
+      g.fillRect(rnd(0, s), rnd(0, s), rnd(1, 2.5), rnd(8, 36));
+    }
+    // Subtle plank bevel outline
+    g.strokeStyle = 'rgba(15,8,3,0.35)'; g.lineWidth = 1.5;
+    for (let c = 0; c <= cols; c++) {
+      g.beginPath(); g.moveTo(c * w, 0); g.lineTo(c * w, s); g.stroke();
+    }
   }),
-  plaster: color => () => canvasTex((g, s) => {
+  parquetNor: () => generateNormalMap((x, y, s) => {
+    const cols = 8, w = s / cols;
+    const px = x % w;
+    const bevel = Math.min(px, w - px) < 2 ? 0.3 : 1.0;
+    const grain = Math.sin(x * 1.5) * 0.06 + Math.sin(y * 0.1) * 0.04;
+    return bevel + grain;
+  }, 512, 2.0),
+  parquetRough: () => canvasTex((g, s) => {
+    g.fillStyle = '#505050'; g.fillRect(0, 0, s, s); // ~0.32 semi-gloss
+    for (let i = 0; i < 600; i++) {
+      g.fillStyle = `rgba(180,180,180,${rnd(0.02, 0.06)})`;
+      g.fillRect(rnd(0, s), rnd(0, s), rnd(2, 4), rnd(8, 25));
+    }
+  }, 512, false),
+
+  plasterDiff: color => () => canvasTex((g, s) => {
     g.fillStyle = color; g.fillRect(0, 0, s, s);
-    for (let i = 0; i < 6000; i++) { g.fillStyle = `rgba(${Math.random() < .5 ? '255,255,255' : '0,0,0'},${rnd(0.01, 0.035)})`; g.fillRect(rnd(0, s), rnd(0, s), rnd(1, 3), rnd(1, 3)); }
+    // Subtle stippling
+    for (let i = 0; i < 8000; i++) {
+      g.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},${rnd(0.012, 0.04)})`;
+      g.fillRect(rnd(0, s), rnd(0, s), rnd(1, 2.5), rnd(1, 2.5));
+    }
   }),
+  plasterNor: () => generateNormalMap((x, y) => {
+    return Math.sin(x * 0.4) * Math.cos(y * 0.4) * 0.08 + Math.sin(x * 0.8 + y * 0.6) * 0.04;
+  }, 512, 1.8),
+  plasterRough: () => canvasTex((g, s) => {
+    g.fillStyle = '#dedede'; g.fillRect(0, 0, s, s); // 0.88 matte
+  }, 256, false),
 };
 
 const DEFS = {
-  marble:      { tex: PROC.marble, tile: 3, rough: 0.12, metal: 0.0, env: 0.9 },
-  parquet:     { tex: PROC.parquet, tile: 2, rough: 0.35, metal: 0.0, env: 0.5 },
-  plasterWarm: { tex: PROC.plaster('#cbb99f'), tile: 4, rough: 0.9, metal: 0, env: 0.3 },
-  plasterDark: { tex: PROC.plaster('#5a3a3c'), tile: 4, rough: 0.9, metal: 0, env: 0.3 },
-  plasterCool: { tex: PROC.plaster('#3d4652'), tile: 4, rough: 0.9, metal: 0, env: 0.3 },
-  trim:        { tex: PROC.plaster('#e7e0d3'), tile: 2, rough: 0.6, metal: 0, env: 0.3 },
-  ceiling:     { tex: PROC.plaster('#ece8e0'), tile: 4, rough: 0.95, metal: 0, env: 0.2 },
+  marble:      { diff: PROC.marbleDiff, nor: PROC.marbleNor, roughTex: PROC.marbleRough, tile: 3, rough: 0.12, metal: 0.02, env: 1.0 },
+  parquet:     { diff: PROC.parquetDiff, nor: PROC.parquetNor, roughTex: PROC.parquetRough, tile: 2, rough: 0.32, metal: 0.01, env: 0.7 },
+  plasterWarm: { diff: PROC.plasterDiff('#cdbba2'), nor: PROC.plasterNor, roughTex: PROC.plasterRough, tile: 4, rough: 0.9, metal: 0, env: 0.3 },
+  plasterDark: { diff: PROC.plasterDiff('#563739'), nor: PROC.plasterNor, roughTex: PROC.plasterRough, tile: 4, rough: 0.9, metal: 0, env: 0.3 },
+  plasterCool: { diff: PROC.plasterDiff('#39424e'), nor: PROC.plasterNor, roughTex: PROC.plasterRough, tile: 4, rough: 0.9, metal: 0, env: 0.3 },
+  trim:        { diff: PROC.plasterDiff('#eae3d7'), nor: PROC.plasterNor, roughTex: PROC.plasterRough, tile: 2, rough: 0.5, metal: 0.05, env: 0.4 },
+  ceiling:     { diff: PROC.plasterDiff('#ede9e2'), nor: PROC.plasterNor, roughTex: PROC.plasterRough, tile: 4, rough: 0.95, metal: 0, env: 0.2 },
 };
 
-/** Procedural material first (always works); swaps in real PBR maps from /assets/textures/<name>/ if they exist. */
+/** Procedural PBR material first (albedo, normal, roughness); auto-swaps file PBR if present in /assets/textures/ */
 export function getMaterial(name) {
   if (cache[name]) return cache[name];
   const d = DEFS[name];
-  const m = new THREE.MeshStandardMaterial({ map: d.tex(), roughness: d.rough, metalness: d.metal, envMapIntensity: d.env });
-  m.userData.tile = d.tile; cache[name] = m;
+  const m = new THREE.MeshStandardMaterial({
+    map: d.diff(),
+    normalMap: d.nor ? d.nor() : null,
+    roughnessMap: d.roughTex ? d.roughTex() : null,
+    roughness: d.rough,
+    metalness: d.metal,
+    envMapIntensity: d.env,
+  });
+  m.userData.tile = d.tile;
+  cache[name] = m;
+
+  // Optional local file override if user drops files into /assets/textures/<name>/
   const base = `/assets/textures/${name}/`;
   const tryLoad = (file, slot, srgb) => loader.load(base + file, t => {
-    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-    m[slot] = t; if (slot === 'roughnessMap') m.roughness = 1; m.needsUpdate = true;
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+    m[slot] = t;
+    m.needsUpdate = true;
   }, undefined, () => {});
-  tryLoad('diff.jpg', 'map', true); tryLoad('nor.jpg', 'normalMap', false); tryLoad('rough.jpg', 'roughnessMap', false);
+  tryLoad('diff.jpg', 'map', true);
+  tryLoad('nor.jpg', 'normalMap', false);
+  tryLoad('rough.jpg', 'roughnessMap', false);
+
   return m;
 }
 
@@ -72,6 +193,7 @@ export function tileBox(w, h, d, tile = 2) {
   }
   return g;
 }
+
 export function tilePlane(w, h, tile = 2) {
   const g = new THREE.PlaneGeometry(w, h), uv = g.attributes.uv;
   for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w / tile, uv.getY(i) * h / tile);
