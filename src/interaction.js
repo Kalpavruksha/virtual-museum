@@ -294,7 +294,7 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
     }
 
     const inscrWrap = $('#p-inscription-wrap');
-    if (inscrWrap) inscrWrap.style.display = 'none';
+    if (inscrWrap) inscrWrap.style.display = (ex.id === 'one_ring') ? 'block' : 'none';
 
     panel.classList.add('show');
   }
