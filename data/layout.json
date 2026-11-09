@@ -3,7 +3,7 @@
   "wallHeight": 5.5,
   "wallThickness": 0.4,
   "artCenterY": 1.6,
-  "spawn": { "pos": [0, 4], "lookAt": [0, -13] },
+  "spawn": { "pos": [0, 4.4], "lookAt": [0, -13] },
   "rooms": [
     { "id": "hall", "name": "Grand Entrance Hall", "center": [0, 0], "size": [18, 12],
       "floor": "marble", "wall": "plasterWarm", "doors": [],

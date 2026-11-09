@@ -200,26 +200,34 @@ export function buildArchitecture(scene, options = {}) {
     // High-resolution Canvas texture with Aniron font
     const c = document.createElement('canvas'); c.width = 1024; c.height = 256;
     const g = c.getContext('2d');
-    g.fillStyle = '#14120e'; g.fillRect(0, 0, 1024, 256);
-    g.strokeStyle = '#c9a84c'; g.lineWidth = 4; g.strokeRect(14, 14, 996, 228);
-    g.strokeStyle = 'rgba(201, 168, 76, 0.4)'; g.lineWidth = 1.5; g.strokeRect(22, 22, 980, 212);
-
-    g.fillStyle = '#f5dfa0'; g.textAlign = 'center';
-    g.font = 'bold 42px Aniron, Georgia, serif';
-    g.fillText(title, 512, 90);
-
-    g.fillStyle = '#c9a84c';
-    g.font = '24px Aniron, Georgia, serif';
-    g.fillText(subtitle, 512, 148);
-
-    if (desc) {
-      g.fillStyle = '#8e7d65';
-      g.font = '19px Aniron, sans-serif';
-      g.fillText(desc, 512, 194);
-    }
-
     const signTex = new THREE.CanvasTexture(c);
     signTex.colorSpace = THREE.SRGBColorSpace;
+
+    const renderSign = () => {
+      g.fillStyle = '#14120e'; g.fillRect(0, 0, 1024, 256);
+      g.strokeStyle = '#c9a84c'; g.lineWidth = 4; g.strokeRect(14, 14, 996, 228);
+      g.strokeStyle = 'rgba(201, 168, 76, 0.4)'; g.lineWidth = 1.5; g.strokeRect(22, 22, 980, 212);
+
+      g.fillStyle = '#f5dfa0'; g.textAlign = 'center';
+      g.font = 'bold 42px Aniron, Georgia, serif';
+      g.fillText(title, 512, 90);
+
+      g.fillStyle = '#c9a84c';
+      g.font = '24px Aniron, Georgia, serif';
+      g.fillText(subtitle, 512, 148);
+
+      if (desc) {
+        g.fillStyle = '#9e8b70';
+        g.font = '19px Aniron, Georgia, serif';
+        g.fillText(desc, 512, 194);
+      }
+      signTex.needsUpdate = true;
+    };
+    renderSign();
+    if (document.fonts?.ready) {
+      document.fonts.ready.then(renderSign);
+    }
+
     const signFace = new THREE.Mesh(
       new THREE.PlaneGeometry(4.6, 0.9),
       new THREE.MeshStandardMaterial({ map: signTex, roughness: 0.35, metalness: 0.15 })
@@ -235,57 +243,130 @@ export function buildArchitecture(scene, options = {}) {
     scene.add(sg);
   }
 
-  // 1. Grand Entrance Hall (Main Entrance above South wall facing spawn, and north portal)
+  // --- Grand Entrance Hall: Front Entrance Portal Archway (Z = 3.0) ---
+  // Classical architectural portal framing the beginning of Grand Entrance Hall directly in front of spawn
+  const entranceZ = 3.0;
+  const archWallMat = getMaterial('plasterWarm');
+  const archTile = archWallMat.userData.tile;
+
+  // Lintel beam across top (y: 3.6 to 5.5, x: -9 to 9)
+  const archLintel = new THREE.Mesh(
+    tileBox(18, 5.5 - 3.6, 0.4, archTile),
+    archWallMat
+  );
+  archLintel.position.set(0, 3.6 + (5.5 - 3.6) / 2, entranceZ);
+  archLintel.receiveShadow = true;
+  archLintel.castShadow = true;
+  scene.add(archLintel);
+  blockers.push(archLintel);
+
+  // Side flanking jamb walls (x: -9 to -2.7 and +2.7 to +9; y: 0 to 3.6)
+  const jambW = 9 - 2.7; // 6.3m wide
+  for (const dir of [-1, 1]) {
+    const jx = dir * (2.7 + jambW / 2);
+    const jamb = new THREE.Mesh(
+      tileBox(jambW, 3.6, 0.4, archTile),
+      archWallMat
+    );
+    jamb.position.set(jx, 1.8, entranceZ);
+    jamb.receiveShadow = true;
+    jamb.castShadow = true;
+    scene.add(jamb);
+    blockers.push(jamb);
+
+    colliders.push({
+      minX: jx - jambW / 2,
+      maxX: jx + jambW / 2,
+      minZ: entranceZ - 0.25,
+      maxZ: entranceZ + 0.25
+    });
+
+    // Baseboards for jamb walls
+    for (const side of [1, -1]) {
+      const b = new THREE.Mesh(tileBox(jambW, 0.16, 0.05, 1), trim);
+      b.position.set(jx, 0.08, entranceZ + side * (0.2 + 0.025));
+      b.receiveShadow = true;
+      scene.add(b);
+    }
+  }
+
+  // Crown moulding across the archway lintel, both faces
+  for (const side of [1, -1]) {
+    const c = new THREE.Mesh(tileBox(18.4, 0.22, 0.12, 1), trim);
+    c.position.set(0, H - 0.11, entranceZ + side * (0.2 + 0.06));
+    scene.add(c);
+  }
+
+  // 1. Grand Entrance Hall: Fixed on the front entrance archway directly in front of player as they enter/spawn
   createPortalSign(
     'GRAND ENTRANCE HALL',
     'Classical Antiquity · Architecture · Leonardo da Vinci',
     'PERMANENT COLLECTION · WING I',
-    0, 4.35, 5.82, Math.PI
+    0, 4.35, entranceZ + 0.25, 0 // Facing South (+Z) directly in front of spawn [0, 4.4]
+  );
+  // Reverse side of entrance archway (facing back to South wall/entrance)
+  createPortalSign(
+    'GRAND ENTRANCE HALL',
+    'Permanent Collection · Leonardo da Vinci Masterpieces',
+    'LEONARDO DA VINCI · WING I',
+    0, 4.35, entranceZ - 0.25, Math.PI // Facing North (-Z)
   );
 
-  // 2. Paintings Gallery (Beginning of Paintings Room at Z = -6.0)
+  // 2. Paintings Gallery: At beginning of Paintings Room at Z = -6.0
+  // Facing South (+Z) into Grand Entrance Hall as player walks towards Paintings Gallery
   createPortalSign(
     'PAINTINGS GALLERY',
     'Masterpieces of Light & Form · Renaissance to Surrealism',
     'VAN GOGH · DA VINCI · VERMEER · DALÍ · HOKUSAI',
-    0, 4.35, -6.12, 0
+    0, 4.35, -5.75, 0
   );
-  // Reverse side of Paintings archway (facing back to Grand Entrance Hall)
+  // Reverse side of Paintings archway (facing North into Paintings Room)
   createPortalSign(
     'GRAND ENTRANCE HALL',
-    'Classical Architecture · Leonardo da Vinci',
+    'Classical Antiquity · Architecture · Leonardo da Vinci',
     'PERMANENT COLLECTION · WING I',
-    0, 4.35, -5.88, Math.PI
+    0, 4.35, -6.25, Math.PI
   );
 
-  // 3. Music & Instruments Hall (Beginning of Music Room at Z = -20.0)
+  // 3. Music & Instruments Hall: At beginning of Music Room at Z = -20.0
+  // Facing South (+Z) into Paintings Gallery as player walks towards Music Hall
   createPortalSign(
     'MUSIC & INSTRUMENTS HALL',
     'Ancient Relics · Acoustic Innovations · Master Symphonies',
     '40,000 BC FLUTES TO BEETHOVEN · WING III',
-    0, 4.35, -20.12, 0
+    0, 4.35, -19.75, 0
   );
-  // Reverse side of Music archway (facing back to Paintings Gallery)
+  // Reverse side of Music archway (facing North into Music Room)
   createPortalSign(
     'PAINTINGS GALLERY',
-    'Masterpieces of Light & Form',
+    'Masterpieces of Light & Form · Renaissance to Surrealism',
     'WING II',
-    0, 4.35, -19.88, Math.PI
+    0, 4.35, -20.25, Math.PI
   );
 
-  // 4. History & Science Room (Beginning of History Room at Z = -34.0)
+  // 4. History & Science Room: At beginning of History Room at Z = -34.0
+  // Facing South (+Z) into Music Hall as player walks towards History Room
   createPortalSign(
     'HISTORY & SCIENCE ROOM',
     'Human Achievement · Space Exploration · The One Ring',
     'APOLLO 11 · EIFFEL TOWER · SAURON MASTER RING',
-    0, 4.35, -34.12, 0
+    0, 4.35, -33.75, 0
   );
-  // Reverse side of History archway (facing back to Music Hall)
+  // Reverse side of History archway (facing North into History Room)
   createPortalSign(
     'MUSIC & INSTRUMENTS HALL',
     'Ancient Relics · Master Symphonies',
     'WING III',
-    0, 4.35, -33.88, Math.PI
+    0, 4.35, -34.25, Math.PI
+  );
+
+  // 5. History & Science Room: Far North wall above Apollo 11 Cinema screen
+  // Facing South (+Z) across the entire History Room directly in front of player as they enter
+  createPortalSign(
+    'HISTORY & SCIENCE ROOM',
+    'Human Achievement · Space Exploration · The One Ring',
+    'APOLLO 11 · EIFFEL TOWER · SAURON MASTER RING · WING IV',
+    0, 4.75, -47.75, 0
   );
 
   return { colliders, blockers };
