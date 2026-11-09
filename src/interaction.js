@@ -138,32 +138,32 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
             if (geom && geom.index && geom.index.count >= 61440) {
               geom.clearGroups();
               geom.addGroup(0, 24576, 0);     // Material 0: Ring body (8,192 triangles)
-              geom.addGroup(24576, 36864, 1); // Material 1: The Words / Inscription (12,288 triangles)
+              geom.addGroup(24576, 36864, 1); // Material 1: Dark Engraved Lettering (12,288 triangles)
 
-              // Rich, gleaming 24K antique gold body - lustrous mirror reflection, NEVER black!
+              // Beautiful polished bronze-gold ring with realistic metallic reflections
               const bodyMat = new THREE.MeshStandardMaterial({
-                color: 0xdca638,        // Luminous 24K antique gold
-                emissive: 0x201502,     // Warm golden baseline
-                metalness: 0.85,        // True metallic luster
-                roughness: 0.12,        // Smooth polished silky sheen
-                envMapIntensity: 2.6
+                color: 0xba8c38,        // Rich warm antique bronze-gold
+                emissive: 0x181105,     // Subtle warm bronze baseline
+                metalness: 0.90,        // High metallic luster for realistic reflections
+                roughness: 0.16,        // Smooth polished silky sheen
+                envMapIntensity: 2.2
               });
 
-              // Bright sculpted white-gold Tengwar runes - catches bright specular glints on 3D bevels!
+              // Dark engraved lettering carved deep into the bronze-gold metal
               const runeMat = new THREE.MeshStandardMaterial({
-                color: 0xfff0b3,        // Bright white-gold incandescent tone
-                emissive: 0x44300a,     // Warm inner golden glow so runes are crystal clear
-                metalness: 0.70,        // High metallic reflections
-                roughness: 0.18,        // Catches specular highlights
-                envMapIntensity: 3.0
+                color: 0x1f1609,        // Deep dark antique engraved crevice patina
+                metalness: 0.45,        // Subtle metallic depth
+                roughness: 0.60,        // Matte engraved crevice
+                emissive: 0x000000,     // Pure dark carved depth, no glow
+                envMapIntensity: 0.6
               });
 
               child.material = [bodyMat, runeMat];
             } else if (child.material) {
-              child.material.metalness = 0.85;
-              child.material.roughness = 0.12;
-              child.material.color.setHex(0xdca638);
-              child.material.emissive.setHex(0x201502);
+              child.material.metalness = 0.90;
+              child.material.roughness = 0.16;
+              child.material.color.setHex(0xba8c38);
+              child.material.emissive.setHex(0x181105);
             }
           }
         }
@@ -282,7 +282,7 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
     }
 
     const inscrWrap = $('#p-inscription-wrap');
-    if (inscrWrap) inscrWrap.style.display = (ex.id === 'one_ring') ? 'block' : 'none';
+    if (inscrWrap) inscrWrap.style.display = 'none';
 
     panel.classList.add('show');
   }
