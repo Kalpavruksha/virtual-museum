@@ -1,18 +1,59 @@
-// Tiny WebAudio helper: synthesised footsteps + quiet room tone. No audio files needed.
+// WebAudio helper: synthesised architectural footsteps, surface acoustics, and quiet gallery tone.
 let ctx, master, noiseBuf;
+
 export function initAudio() {
-  if (ctx) return; ctx = new (window.AudioContext || window.webkitAudioContext)();
-  master = ctx.createGain(); master.gain.value = 0.6; master.connect(ctx.destination);
+  if (ctx) return;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  master = ctx.createGain();
+  master.gain.value = 0.65;
+  master.connect(ctx.destination);
+
+  // Generate 1 second of white noise buffer
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
-  const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-  const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
-  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 220;
-  const g = ctx.createGain(); g.gain.value = 0.035; src.connect(lp).connect(g).connect(master); src.start();
+  const d = noiseBuf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+
+  // Gentle, warm gallery room tone (filtered Brownian/pink ambience)
+  const roomSrc = ctx.createBufferSource();
+  roomSrc.buffer = noiseBuf;
+  roomSrc.loop = true;
+
+  const lowpass = ctx.createBiquadFilter();
+  lowpass.type = 'lowpass';
+  lowpass.frequency.value = 180;
+
+  const roomGain = ctx.createGain();
+  roomGain.gain.value = 0.028;
+
+  roomSrc.connect(lowpass).connect(roomGain).connect(master);
+  roomSrc.start();
 }
-export function footstep(sprint = false) {
-  if (!ctx) return; const t = ctx.currentTime;
-  const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.playbackRate.value = 0.7 + Math.random() * 0.4;
-  const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 450 + Math.random() * 250; f.Q.value = 0.8;
-  const g = ctx.createGain(); g.gain.setValueAtTime(sprint ? 0.32 : 0.2, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-  s.connect(f).connect(g).connect(master); s.start(t, Math.random() * 0.5, 0.14);
+
+/** Footstep sound with surface variation (marble vs parquet) and sprint cadence */
+export function footstep(sprint = false, surface = 'parquet') {
+  if (!ctx || ctx.state !== 'running') return;
+  const t = ctx.currentTime;
+
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuf;
+
+  const isMarble = surface === 'marble';
+  src.playbackRate.value = isMarble ? 1.05 + Math.random() * 0.3 : 0.72 + Math.random() * 0.35;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = isMarble ? 650 + Math.random() * 250 : 380 + Math.random() * 200;
+  filter.Q.value = isMarble ? 1.2 : 0.85;
+
+  const gain = ctx.createGain();
+  const vol = sprint ? (isMarble ? 0.36 : 0.3) : (isMarble ? 0.22 : 0.18);
+  gain.gain.setValueAtTime(vol, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + (isMarble ? 0.16 : 0.11));
+
+  src.connect(filter).connect(gain).connect(master);
+  src.start(t, Math.random() * 0.5, 0.15);
+}
+
+export function getAudioContext() {
+  return ctx;
 }

@@ -26,7 +26,8 @@ export function createPlayer(camera, dom, colliders) {
     const spd = moved / Math.max(dt, 1e-4);
     bob += moved * (sprint ? 2.6 : 3.2);
     camera.position.y = EYE + Math.sin(bob * 2) * 0.018 * Math.min(1, spd / 2);
-    stepDist += moved; if (stepDist > (sprint ? 1.5 : 1.05)) { stepDist = 0; footstep(sprint); }
+    const surface = (pos.z > -6 || pos.z < -34) ? 'marble' : 'parquet';
+    stepDist += moved; if (stepDist > (sprint ? 1.5 : 1.05)) { stepDist = 0; footstep(sprint, surface); }
   }
   return { controls, update };
 }
