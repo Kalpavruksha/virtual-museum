@@ -44,6 +44,32 @@
   box-sizing: border-box;
   font-family: 'Aniron', Georgia, serif;
 }
+html {
+  font-size: 16px;
+}
+/* Mobile-only root font size scaling & visual zoom out */
+@media (max-width: 1024px) and (orientation: landscape), (max-height: 520px) {
+  html.mobile-device, body.is-touch-device {
+    font-size: 14px;
+  }
+}
+@media (max-width: 480px) {
+  html.mobile-device, body.is-touch-device {
+    font-size: 13.5px;
+  }
+}
+@media (max-width: 360px) {
+  html.mobile-device, body.is-touch-device {
+    font-size: 12.5px;
+  }
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
 html, body {
   margin: 0;
   height: 100%;
@@ -70,22 +96,27 @@ body::after {
   justify-content: center;
   background: rgba(8,7,6,.88);
   backdrop-filter: blur(8px);
-  z-index: 10;
-  transition: opacity .6s, visibility .6s;
+  z-index: 500;
+  transition: opacity .4s, visibility .4s;
 }
-.overlay.hide { opacity: 0; visibility: hidden; pointer-events: none !important; }
+.overlay.hide {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  display: none !important;
+}
 h1 {
-  font: 600 clamp(2.2rem, 6vw, 4.2rem)/1 var(--serif);
+  font: 600 clamp(1.8rem, 6.5vmin, 4.2rem)/1 var(--serif);
   letter-spacing: .18em;
   color: var(--gold2);
   margin: 0 0 .4em;
   text-transform: uppercase;
 }
 .sub {
-  font: 400 1.25rem var(--serif);
+  font: 400 clamp(0.85rem, 2.6vmin, 1.25rem) var(--serif);
   color: var(--gold);
   letter-spacing: .12em;
-  margin-bottom: 2rem;
+  margin-bottom: clamp(1rem, 3.5vmin, 2rem);
 }
 button {
   font: 500 .85rem var(--sans);
@@ -109,9 +140,12 @@ button:hover {
   min-width: 220px;
   min-height: 52px;
   position: relative;
-  z-index: 25;
+  z-index: 510;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 #start {
+  z-index: 500;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -121,7 +155,11 @@ button:hover {
   letter-spacing: .1em;
   color: #8c8470;
 }
-#loading { z-index: 20; }
+#loading {
+  z-index: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
 .bar {
   width: 260px;
   height: 2px;
@@ -659,20 +697,20 @@ html.rotate-dismissed .rotate-overlay {
   background: rgba(184, 151, 90, 0.15);
 }
 
-/* Mobile Controls Container - Hidden by default on desktop, visible on touch devices */
+/* Mobile Controls Container - Hidden by default on desktop, visible ONLY after entering tour on mobile */
 .mobile-controls {
-  display: none;
+  display: none !important;
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 25;
+  z-index: 30;
   user-select: none;
   -webkit-user-select: none;
 }
 
-/* Strictly show mobile controls when on touch/mobile devices */
-html.mobile-device .mobile-controls,
-body.is-touch-device .mobile-controls {
+/* Strictly show mobile controls ONLY when tour has started on touch/mobile devices */
+body.tour-active.is-touch-device .mobile-controls,
+html.mobile-device body.tour-active .mobile-controls {
   display: block !important;
 }
 
@@ -1220,7 +1258,7 @@ body.is-touch-device #cross {
     <button id="p-x" class="p-close-x" title="Close (Esc)">✕</button>
     <div class="panel-grid">
       <div class="media-col">
-        <img id="p-img" src="" alt="Artwork Preview" style="display:none;" />
+        <img id="p-img" src="" alt="Artwork Preview" loading="lazy" style="display:none;" />
         <div id="p-model-wrap" class="model-viewer-wrap" style="display:none;">
           <canvas id="p-canvas"></canvas>
           <div class="model-hint">Drag to rotate · Scroll to zoom</div>
@@ -1242,7 +1280,7 @@ body.is-touch-device #cross {
         <div id="p-desc"></div>
         <div id="p-inscription-wrap" class="inscription-banner" style="display:none;">
           <div class="inscr-title">ELVISH TENGWAR INSCRIPTION · BLACK SPEECH OF MORDOR</div>
-          <img id="p-inscription-img" src="/assets/models/one-ring/textures/one_ring_inscription_gold.png" alt="Elvish Tengwar Inscription" />
+          <img id="p-inscription-img" src="/assets/models/one-ring/textures/one_ring_inscription_gold.png" alt="Elvish Tengwar Inscription" loading="lazy" />
           <div class="inscr-text">
             <div class="inscr-line"><strong>Outer Ring:</strong> <em>Ash nazg durbatulûk, ash nazg gimbatul,</em></div>
             <div class="inscr-line"><strong>Inner Ring:</strong> <em>ash nazg thrakatulûk agh burzum-ishi krimpatul.</em></div>

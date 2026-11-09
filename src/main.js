@@ -242,6 +242,7 @@ let isEntered = false;
 const enterMuseum = () => {
   if (isEntered) return;
   isEntered = true;
+  document.body.classList.add('tour-active');
   $('loading')?.classList.add('hide');
   $('start')?.classList.add('hide');
 
@@ -268,25 +269,30 @@ const onStartTap = e => {
 if (startBtn) {
   startBtn.addEventListener('pointerdown', onStartTap);
   startBtn.addEventListener('touchstart', onStartTap, { passive: false });
+  startBtn.addEventListener('touchend', onStartTap, { passive: false });
   startBtn.addEventListener('click', onStartTap);
 }
 
 if (startEl) {
   startEl.addEventListener('pointerdown', e => {
-    if (e.target === startEl || e.target.closest('#startBtn') || e.target.tagName === 'H1' || e.target.classList.contains('sub')) {
+    if (e.target === startEl || e.target.closest('#startBtn') || e.target.tagName === 'H1' || e.target.classList.contains('sub') || e.target.classList.contains('keys')) {
       onStartTap(e);
     }
   });
+  startEl.addEventListener('touchstart', onStartTap, { passive: false });
+  startEl.addEventListener('touchend', onStartTap, { passive: false });
   startEl.addEventListener('click', onStartTap);
 }
 
 player.controls.addEventListener('lock', () => {
+  document.body.classList.add('tour-active');
   $('start').classList.add('hide');
   exhibits?.startMedia?.();
 });
 
 player.controls.addEventListener('unlock', () => {
   if (!interaction?.isOpen?.() && !player.isMobile()) {
+    document.body.classList.remove('tour-active');
     $('start').classList.remove('hide');
     exhibits?.pauseAllMedia?.();
   }

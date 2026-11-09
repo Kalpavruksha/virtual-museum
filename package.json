@@ -8,6 +8,12 @@
     "validate": "node scripts/validate.mjs",
     "assets": "node scripts/download-assets.mjs"
   },
-  "dependencies": { "three": "0.170.0" },
-  "devDependencies": { "vite": "^5.4.0" }
+  "dependencies": {
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.5",
+    "vite": "^5.4.0",
+    "vite-plugin-image-optimizer": "^2.0.3"
+  }
 }
