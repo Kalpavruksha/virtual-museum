@@ -79,9 +79,14 @@ Pressing **E** or **clicking** any 3D model monument (The One Ring or Eiffel Tow
 - **Esc:** Pause the museum (or close modal), immediately muting background audio.
 
 ### Mobile & Touch
-- **Left Side of Screen:** Virtual touch joystick with visual indicator for walking.
-- **Right Side of Screen:** Drag to look and pitch camera.
-- **Tap:** Inspect exhibit or interact.
+- **Left Joystick:** Virtual analog joystick with continuous multi-directional movement.
+- **Right Screen Drag:** Fluid first-person camera look with smooth pitch and yaw.
+- **INTERACT Button:** Dedicated glowing button that pulses whenever standing within range of an artwork.
+- **SPRINT Button:** Dedicated button to toggle running speed (4.6 m/s).
+- **MENU Button (Top-Left):** Quick-travel teleport to all 4 wings, graphics presets, sound mute, and controls guide.
+- **Sound & Fullscreen (Top-Right):** Instant mute/unmute and browser fullscreen toggles.
+- **Direct Tap-to-Select:** Tap any artwork or vitrine directly in the 3D scene to inspect it.
+- **Touch Modal Viewer:** Drag to rotate 3D models and two-finger pinch-to-zoom.
 
 ---
 
@@ -99,10 +104,21 @@ Pressing **E** or **clicking** any 3D model monument (The One Ring or Eiffel Tow
 
 ## Performance & Quality Settings
 
-Switch quality anytime using the on-screen pill in the top-right corner (`[ LOW | MED | HIGH ]`) or via URL parameter `?q=low|medium|high`:
-- **Low:** 1x DPR, shadows disabled, floor reflection disabled, maximum FPS on integrated GPUs.
-- **Medium:** 1.5x DPR, soft shadow maps, 512px planar floor reflections.
-- **High:** 2x DPR, PCF soft shadows, 1024px planar reflections, UnrealBloom pass, and cinematic vignette.
+Switch quality anytime using the on-screen pill or via Museum Menu (`[ LOW | MED | HIGH | AUTO ]`):
+- **Low:** 1.0x DPR, shadows disabled, floor reflection disabled, bloom disabled; maximum FPS on older mobile devices and integrated GPUs.
+- **Medium:** 1.25x DPR, soft shadow maps, bloom disabled, optimized for mobile battery life and high performance.
+- **High:** Up to 1.5x - 2.0x DPR, PCF soft shadows, planar floor reflections, UnrealBloom pass, and cinematic vignette.
+- **Auto (Adaptive):** Automatically detects mobile vs desktop hardware and dynamically samples real-time FPS to optimize performance on the fly.
+
+---
+
+## Deployment (Vercel)
+
+This repository is optimized for 1-click zero-configuration deployment to [Vercel](https://vercel.com):
+1. Import repository `Kalpavruksha/virtual-museum`.
+2. Framework Preset: **Vite** (auto-detected).
+3. Build Command: `vite build` (Output Directory: `dist`).
+4. Deploy! Accessible on both mobile and desktop browsers with HTTPS.
 
 ---
 
