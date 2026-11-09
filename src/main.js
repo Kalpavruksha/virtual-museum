@@ -26,8 +26,20 @@ THREE.DefaultLoadingManager.onProgress = (url, loaded, total) => {
 THREE.DefaultLoadingManager.onLoad = () => {
   setTimeout(() => {
     $('loading')?.classList.add('hide');
-  }, 400);
+  }, 200);
 };
+THREE.DefaultLoadingManager.onError = url => {
+  console.warn('Asset loading warning:', url);
+};
+
+// Safety timeout: never freeze loading screen for more than 1.8s
+setTimeout(() => {
+  $('loading')?.classList.add('hide');
+}, 1800);
+
+// Tapping loading screen directly bypasses it
+$('loading')?.addEventListener('pointerdown', () => $('loading')?.classList.add('hide'));
+$('loading')?.addEventListener('touchstart', () => $('loading')?.classList.add('hide'), { passive: true });
 
 // Device & Hardware Capability Detection
 const isMobileDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(pointer: coarse)').matches;
@@ -144,31 +156,41 @@ try {
 } catch (_) {}
 
 const { colliders, blockers } = buildArchitecture(scene, Q);
-const exhibits = await buildExhibits(scene, colliders);
 
-// Wire Player & Interaction with mobile tap-to-select support
-let interaction;
+// Wire Player with mobile tap-to-select support
+let exhibits = null;
+let interaction = null;
+
 const player = createPlayer(camera, renderer.domElement, colliders, {
   onTap: (x, y) => {
     if (interaction) interaction.tapSelect(x, y);
   }
 });
 
-interaction = createInteraction({
-  camera,
-  targets: exhibits.targets,
-  blockers,
-  controls: player.controls,
-  player,
-  prompt: $('prompt'),
-  panel: $('panel')
+// Load exhibits smoothly in parallel
+buildExhibits(scene, colliders).then(built => {
+  exhibits = built;
+  interaction = createInteraction({
+    camera,
+    targets: exhibits.targets,
+    blockers,
+    controls: player.controls,
+    player,
+    prompt: $('prompt'),
+    panel: $('panel')
+  });
+  if (isEntered) {
+    exhibits.startMedia();
+  }
+  $('loading')?.classList.add('hide');
+}).catch(err => {
+  console.warn('Exhibits load warning:', err);
+  $('loading')?.classList.add('hide');
 });
 
 const drawMap = createMinimap($('minimap'));
 
-$('loading')?.classList.add('hide');
-
-// Adapt Start Screen text for mobile vs desktop
+// Adapt Start Screen text for mobile vs desktop immediately
 if (isMobileDevice) {
   const startBtn = $('startBtn');
   if (startBtn) startBtn.textContent = 'Tap to enter';
@@ -189,52 +211,91 @@ const requestLandscape = async () => {
   } catch (_) {}
 };
 
+const handleForceLandscape = async e => {
+  e?.preventDefault?.();
+  e?.stopPropagation?.();
+  document.documentElement.classList.add('rotate-dismissed');
+  await requestLandscape();
+};
+
+const handleDismissRotate = e => {
+  e?.preventDefault?.();
+  e?.stopPropagation?.();
+  document.documentElement.classList.add('rotate-dismissed');
+};
+
 const btnForceLandscape = $('btnForceLandscape');
 if (btnForceLandscape) {
-  const handleForceLandscape = async e => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    await requestLandscape();
-  };
+  btnForceLandscape.addEventListener('pointerdown', handleForceLandscape);
   btnForceLandscape.addEventListener('touchstart', handleForceLandscape, { passive: false });
   btnForceLandscape.addEventListener('click', handleForceLandscape);
 }
 
+const btnDismissRotate = $('btnDismissRotate');
+if (btnDismissRotate) {
+  btnDismissRotate.addEventListener('pointerdown', handleDismissRotate);
+  btnDismissRotate.addEventListener('touchstart', handleDismissRotate, { passive: false });
+  btnDismissRotate.addEventListener('click', handleDismissRotate);
+}
+
+let isEntered = false;
 const enterMuseum = () => {
-  initAudio();
-  resumeAudio();
-  exhibits.startMedia();
-  player.startTour();
-  $('start').classList.add('hide');
+  if (isEntered) return;
+  isEntered = true;
+  $('loading')?.classList.add('hide');
+  $('start')?.classList.add('hide');
+
+  try { player.startTour(); } catch (_) {}
+  try { initAudio(); resumeAudio(); } catch (_) {}
+  try { exhibits?.startMedia?.(); } catch (_) {}
+
   if (isMobileDevice) {
     requestLandscape();
   } else {
-    player.controls.lock();
+    try { player.controls.lock(); } catch (_) {}
   }
 };
 
-$('start').addEventListener('click', enterMuseum);
-$('startBtn')?.addEventListener('click', e => {
-  e.stopPropagation();
+const startEl = $('start');
+const startBtn = $('startBtn');
+
+const onStartTap = e => {
+  e?.preventDefault?.();
+  e?.stopPropagation?.();
   enterMuseum();
-});
+};
+
+if (startBtn) {
+  startBtn.addEventListener('pointerdown', onStartTap);
+  startBtn.addEventListener('touchstart', onStartTap, { passive: false });
+  startBtn.addEventListener('click', onStartTap);
+}
+
+if (startEl) {
+  startEl.addEventListener('pointerdown', e => {
+    if (e.target === startEl || e.target.closest('#startBtn') || e.target.tagName === 'H1' || e.target.classList.contains('sub')) {
+      onStartTap(e);
+    }
+  });
+  startEl.addEventListener('click', onStartTap);
+}
 
 player.controls.addEventListener('lock', () => {
   $('start').classList.add('hide');
-  exhibits.startMedia();
+  exhibits?.startMedia?.();
 });
 
 player.controls.addEventListener('unlock', () => {
-  if (!interaction.isOpen() && !player.isMobile()) {
+  if (!interaction?.isOpen?.() && !player.isMobile()) {
     $('start').classList.remove('hide');
-    exhibits.pauseAllMedia();
+    exhibits?.pauseAllMedia?.();
   }
 });
 
 // --- Mobile Museum Menu Modal Management ---
 const menuModal = $('menuModal');
 const openMenu = () => {
-  if (interaction.isOpen()) interaction.close();
+  if (interaction?.isOpen?.()) interaction.close();
   menuModal?.classList.add('show');
   player.setModalOpen(true);
 };
@@ -326,11 +387,11 @@ if (window.screen?.orientation) {
 // --- Background Tab Throttling (battery & thermal savings) ---
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    exhibits.pauseAllMedia();
+    exhibits?.pauseAllMedia?.();
   } else {
     resumeAudio();
     if (player.isActive()) {
-      exhibits.startMedia();
+      exhibits?.startMedia?.();
     }
   }
 });
@@ -376,8 +437,8 @@ renderer.setAnimationLoop(() => {
   const isPaused = !player.isActive();
 
   player.update(dt);
-  interaction.update();
-  exhibits.update(camera, dt, isPaused);
+  interaction?.update?.();
+  exhibits?.update?.(camera, dt, isPaused);
   drawMap(camera);
   monitorAdaptivePerformance();
 

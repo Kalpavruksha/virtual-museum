@@ -254,6 +254,7 @@ function audioStation(ex) {
   const audio = new Audio(ex.src);
   audio.loop = true;
   audio.volume = 0;
+  audio.preload = 'none';
   let started = false;
 
   return {
@@ -504,7 +505,7 @@ function modelPedestal(ex) {
     const ringAudio = new Audio(audioSrc);
     ringAudio.loop = true;
     ringAudio.volume = 0;
-    ringAudio.preload = 'auto';
+    ringAudio.preload = 'none';
     let started = false;
 
     media = {

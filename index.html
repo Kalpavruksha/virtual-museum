@@ -73,7 +73,7 @@ body::after {
   z-index: 10;
   transition: opacity .6s, visibility .6s;
 }
-.overlay.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+.overlay.hide { opacity: 0; visibility: hidden; pointer-events: none !important; }
 h1 {
   font: 600 clamp(2.2rem, 6vw, 4.2rem)/1 var(--serif);
   letter-spacing: .18em;
@@ -97,11 +97,23 @@ button {
   padding: 1rem 2.2rem;
   cursor: pointer;
   transition: all .25s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 button:hover {
   background: var(--gold);
   color: var(--ink);
   box-shadow: 0 0 20px var(--gold-glow);
+}
+#startBtn {
+  min-width: 220px;
+  min-height: 52px;
+  position: relative;
+  z-index: 25;
+}
+#start {
+  cursor: pointer;
+  touch-action: manipulation;
 }
 .keys {
   margin-top: 2rem;
@@ -508,19 +520,22 @@ button:hover {
   -webkit-user-select: none;
 }
 
-/* Strictly ONLY on mobile devices when in portrait orientation */
+/* Strictly ONLY on mobile devices when in portrait orientation and not dismissed */
 @media (orientation: portrait) {
-  html.mobile-device .rotate-overlay,
-  body.is-touch-device .rotate-overlay {
+  html.mobile-device:not(.rotate-dismissed) .rotate-overlay,
+  body.is-touch-device:not(.rotate-dismissed) .rotate-overlay {
     display: flex !important;
   }
 }
 
-/* Strictly hidden when rotated sideways in landscape */
+/* Strictly hidden when rotated sideways in landscape OR dismissed */
 @media (orientation: landscape) {
   .rotate-overlay {
     display: none !important;
   }
+}
+html.rotate-dismissed .rotate-overlay {
+  display: none !important;
 }
 
 .rotate-card {
@@ -624,6 +639,24 @@ button:hover {
   background: var(--gold);
   color: var(--ink);
   box-shadow: 0 0 24px rgba(232, 195, 106, 0.8);
+}
+
+.rotate-dismiss-btn {
+  background: transparent;
+  border: 1px solid rgba(184, 151, 90, 0.45);
+  color: #c8beab;
+  padding: 0.7rem 1.2rem;
+  border-radius: 4px;
+  font: 600 0.74rem 'Aniron', Georgia, serif;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+.rotate-dismiss-btn:hover, .rotate-dismiss-btn:active {
+  color: var(--gold2);
+  border-color: var(--gold);
+  background: rgba(184, 151, 90, 0.15);
 }
 
 /* Mobile Controls Container - Hidden by default on desktop, visible on touch devices */
@@ -1047,6 +1080,7 @@ body.is-touch-device #cross {
     <div class="rotate-title">ROTATE YOUR DEVICE SIDEWAYS</div>
     <div class="rotate-desc">For the best 3D virtual museum experience, please turn your phone horizontally to landscape mode.</div>
     <button id="btnForceLandscape" class="rotate-force-btn">✦ ENTER FULLSCREEN LANDSCAPE ✦</button>
+    <button id="btnDismissRotate" class="rotate-dismiss-btn">CONTINUE ANYWAY</button>
   </div>
 </div>
 <!-- Mobile Game-Style Controls -->
