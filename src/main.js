@@ -69,7 +69,7 @@ document.body.prepend(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0c0b0a);
 scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = 0.42;
+scene.environmentIntensity = 0.9;
 scene.add(new THREE.HemisphereLight(0xfff5e6, 0x241c14, 0.32));
 
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 120);

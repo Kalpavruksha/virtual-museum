@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 export function createInteraction({ camera, targets, blockers, controls, prompt, panel }) {
   const ray = new THREE.Raycaster();
@@ -37,25 +38,36 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
       powerPreference: 'high-performance'
     });
     modalRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-    modalRenderer.toneMappingExposure = 1.2;
+    modalRenderer.toneMappingExposure = 1.25;
     modalRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     modalScene = new THREE.Scene();
+    const pmrem = new THREE.PMREMGenerator(modalRenderer);
+    modalScene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    modalScene.environmentIntensity = 1.6;
+
     modalCamera = new THREE.PerspectiveCamera(45, 1, 0.05, 50);
 
-    const amb = new THREE.AmbientLight(0xfff5e6, 0.95);
-    const key = new THREE.DirectionalLight(0xffeedd, 2.4);
+    // Studio lighting matching Sketchfab 3D viewer
+    const amb = new THREE.AmbientLight(0xfff8ee, 0.7);
+    const key = new THREE.DirectionalLight(0xfff5e6, 2.8);
     key.position.set(3, 4, 3);
-    const fill = new THREE.DirectionalLight(0x88bbff, 1.4);
-    fill.position.set(-3, -1, -2);
-    const spot = new THREE.SpotLight(0xffe2a0, 4.0, 10, Math.PI / 4, 0.6);
-    spot.position.set(0, 3, 2);
-    modalScene.add(amb, key, fill, spot);
+    const fill = new THREE.DirectionalLight(0xffffff, 1.6);
+    fill.position.set(-3, 1, -2);
+    const rim = new THREE.DirectionalLight(0xffeedd, 2.2);
+    rim.position.set(0, 3, -4);
+    const bounce = new THREE.DirectionalLight(0xdfa030, 1.2);
+    bounce.position.set(0, -3, 2);
+    modalScene.add(amb, key, fill, rim, bounce);
 
     // Interactive Drag to Rotate & Scroll to Zoom
     let dragging = false, lastX = 0, lastY = 0;
+    let userInteracting = false, idleTimer = null;
+
     const onDown = e => {
       dragging = true;
+      userInteracting = true;
+      clearTimeout(idleTimer);
       lastX = e.clientX ?? (e.touches && e.touches[0].clientX) ?? 0;
       lastY = e.clientY ?? (e.touches && e.touches[0].clientY) ?? 0;
     };
@@ -68,7 +80,10 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
       modalPivot.rotation.y += dx * 0.01;
       modalPivot.rotation.x = THREE.MathUtils.clamp(modalPivot.rotation.x + dy * 0.01, -1.2, 1.2);
     };
-    const onUp = () => { dragging = false; };
+    const onUp = () => {
+      dragging = false;
+      idleTimer = setTimeout(() => { userInteracting = false; }, 2500);
+    };
     canvas.addEventListener('mousedown', onDown);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
@@ -80,6 +95,9 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
       e.preventDefault();
       modalCamera.position.z = THREE.MathUtils.clamp(modalCamera.position.z + e.deltaY * 0.002, 0.8, 5.0);
     }, { passive: false });
+
+    // Store interaction state for loop
+    modalScene.userData = { isUserInteracting: () => userInteracting };
   }
 
   function startModelViewer(ex) {
@@ -101,7 +119,7 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
     modalCamera.updateProjectionMatrix();
 
     const isRing = ex.id === 'one_ring';
-    modalCamera.position.set(0, 0.1, isRing ? 1.5 : 2.6);
+    modalCamera.position.set(0, 0, isRing ? 1.55 : 2.6);
 
     const loader = new GLTFLoader();
     try {
@@ -119,38 +137,33 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
             const geom = child.geometry;
             if (geom && geom.index && geom.index.count >= 61440) {
               geom.clearGroups();
-              geom.addGroup(0, 24576, 0);     // Material 0: Ring body
-              geom.addGroup(24576, 36864, 1); // Material 1: The Words / Inscription
+              geom.addGroup(0, 24576, 0);     // Material 0: Ring body (8,192 triangles)
+              geom.addGroup(24576, 36864, 1); // Material 1: The Words / Inscription (12,288 triangles)
 
-              const texLoader = new THREE.TextureLoader();
-              const brightTex = texLoader.load('/assets/models/one-ring/textures/one_ring_inscription_bright.png');
-              brightTex.colorSpace = THREE.SRGBColorSpace;
-              brightTex.wrapS = THREE.RepeatWrapping;
-
+              // Rich, gleaming 24K antique gold body - lustrous mirror reflection, NEVER black!
               const bodyMat = new THREE.MeshStandardMaterial({
-                color: 0xffd54f,        // Rich, vibrant, warm 24K gold
-                emissive: 0x5a3e08,     // Warm golden glow so it never turns black in shadow
-                metalness: 0.50,        // Strong golden metallic sheen + full diffuse
-                roughness: 0.16,
-                envMapIntensity: 2.5
+                color: 0xdca638,        // Luminous 24K antique gold
+                emissive: 0x201502,     // Warm golden baseline
+                metalness: 0.85,        // True metallic luster
+                roughness: 0.12,        // Smooth polished silky sheen
+                envMapIntensity: 2.6
               });
 
+              // Bright sculpted white-gold Tengwar runes - catches bright specular glints on 3D bevels!
               const runeMat = new THREE.MeshStandardMaterial({
-                color: 0xfffae6,        // White-hot incandescent core
-                emissive: 0xfff0aa,     // Bright white-gold incandescent glow
-                emissiveIntensity: 5.0, // Razor sharp, glowing runes in close-up
-                emissiveMap: brightTex,
-                map: brightTex,
-                metalness: 0.1,
-                roughness: 0.18
+                color: 0xfff0b3,        // Bright white-gold incandescent tone
+                emissive: 0x44300a,     // Warm inner golden glow so runes are crystal clear
+                metalness: 0.70,        // High metallic reflections
+                roughness: 0.18,        // Catches specular highlights
+                envMapIntensity: 3.0
               });
 
               child.material = [bodyMat, runeMat];
             } else if (child.material) {
-              child.material.metalness = 0.5;
-              child.material.roughness = 0.16;
-              child.material.color.setHex(0xffd54f);
-              child.material.emissive.setHex(0x5a3e08);
+              child.material.metalness = 0.85;
+              child.material.roughness = 0.12;
+              child.material.color.setHex(0xdca638);
+              child.material.emissive.setHex(0x201502);
             }
           }
         }
@@ -169,8 +182,14 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
       m.position.sub(center);
 
       if (isRing) {
-        modalPivot.rotation.x = 0.48; // Angle fiery runes toward viewer
-        const ringGlow = new THREE.PointLight(0xffdf88, 4.0, 2.5, 2);
+        // Tilted ~22 degrees pitch down matching Sketchfab reference screenshot
+        // Outer inscription and inner inscription are both immediately in clear view!
+        modalPivot.rotation.x = 0.38;
+        modalPivot.rotation.y = 0;
+        modalPivot.rotation.z = 0;
+
+        const ringGlow = new THREE.PointLight(0xffe29a, 2.8, 2.2, 2);
+        ringGlow.position.set(0, 0, 0);
         modalPivot.add(ringGlow);
       }
 
@@ -182,7 +201,10 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
       if (!open) return;
       modalAnimId = requestAnimationFrame(loop);
       if (modalPivot) {
-        modalPivot.rotation.y += 0.007; // gentle continuous rotation
+        // Only auto-spin when user is not manually rotating to inspect
+        if (!modalScene.userData?.isUserInteracting?.()) {
+          modalPivot.rotation.y += 0.005;
+        }
       }
       modalRenderer.render(modalScene, modalCamera);
     };

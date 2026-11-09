@@ -390,44 +390,37 @@ function modelPedestal(ex) {
           child.castShadow = true;
           child.receiveShadow = true;
           if (isRing) {
-            // Split geometry into pure gold ring body and glowing fiery Tengwar inscription
+            // Split geometry into pure gold ring body and sculpted Tengwar inscription
             const geom = child.geometry;
             if (geom && geom.index && geom.index.count >= 61440) {
               geom.clearGroups();
               geom.addGroup(0, 24576, 0);     // Material 0: Ring body (8,192 triangles)
               geom.addGroup(24576, 36864, 1); // Material 1: The Words / Inscription (12,288 triangles)
 
-              const texLoader = new THREE.TextureLoader();
-              const brightTex = texLoader.load('/assets/models/one-ring/textures/one_ring_inscription_bright.png');
-              brightTex.colorSpace = THREE.SRGBColorSpace;
-              brightTex.wrapS = THREE.RepeatWrapping;
-
-              // Gleaming 24K pure gold body - warm, lustrous, NEVER black!
+              // Gleaming 24K pure antique gold body - lustrous mirror sheen, NEVER black!
               const bodyMat = new THREE.MeshStandardMaterial({
-                color: 0xffd54f,        // Rich, vibrant, warm 24K gold
-                emissive: 0x5a3e08,     // Warm golden ambient glow so it never turns black in shadow
-                metalness: 0.50,        // Balanced metallic sheen + strong golden diffuse
-                roughness: 0.16,        // Smooth polished mirror gold
-                envMapIntensity: 2.2
+                color: 0xdca638,        // Luminous 24K antique gold
+                emissive: 0x221703,     // Warm golden baseline so it never turns black in vitrine shadows
+                metalness: 0.82,        // Lustrous gold metal
+                roughness: 0.14,        // Polished smooth mirror
+                envMapIntensity: 2.6
               });
 
-              // Bright white-hot glowing Tengwar script runes!
+              // Bright sculpted white-gold Tengwar runes - catches bright specular glints on 3D bevels!
               const runeMat = new THREE.MeshStandardMaterial({
-                color: 0xfffae6,        // White-hot incandescent core
-                emissive: 0xfff0aa,     // Luminous white-gold incandescence
-                emissiveIntensity: 4.5, // Bright radiant Mordor glow
-                emissiveMap: brightTex,
-                map: brightTex,
-                metalness: 0.1,
-                roughness: 0.18
+                color: 0xfff0b3,        // Bright white-gold incandescent tone for razor-sharp legibility
+                emissive: 0x44300a,     // Warm golden glow
+                metalness: 0.70,        // High metallic reflections
+                roughness: 0.18,        // Catches specular highlights
+                envMapIntensity: 3.0
               });
 
               child.material = [bodyMat, runeMat];
             } else if (child.material) {
-              child.material.metalness = 0.5;
-              child.material.roughness = 0.16;
-              child.material.color.setHex(0xffd54f);
-              child.material.emissive.setHex(0x5a3e08);
+              child.material.metalness = 0.82;
+              child.material.roughness = 0.14;
+              child.material.color.setHex(0xdca638);
+              child.material.emissive.setHex(0x221703);
             }
           }
         }
