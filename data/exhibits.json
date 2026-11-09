@@ -207,6 +207,7 @@
       "artist": "Classical Masterpiece Series",
       "year": "1824",
       "src": "/assets/audio/beethoven9.mp3",
+      "thumb": "/assets/images/beethoven_portrait.jpg",
       "description": "Step close to the listening station pedestal to hear the recording fade in gently with 3D audio proximity.",
       "license": "Public domain audio",
       "download": null
@@ -237,7 +238,9 @@
       "artist": "Gustave Eiffel's engineering team",
       "year": "1889",
       "src": "/assets/models/eiffel.glb",
+      "thumb": "/assets/images/eiffel.jpg",
       "height": 1.4,
+      "targetSize": 1.4,
       "description": "Precision 3D scale model of Paris's iconic wrought-iron lattice tower, constructed for the 1889 World's Fair.",
       "license": "Creative Commons 3D Model",
       "download": null
@@ -251,9 +254,12 @@
       "artist": "Sauron / J.R.R. Tolkien Legendarium",
       "year": "Second Age c. 1600",
       "src": "/assets/models/one_ring.glb",
+      "thumb": "/assets/images/one_ring.png",
       "audioSrc": "/assets/audio/the_one_ring_violin.mp3",
       "height": 0.5,
-      "description": "The Master Ring forged by Sauron in Mount Doom. Inscribed with fiery Tengwar runes, its solemn violin theme resonates whenever it is inspected.",
+      "targetSize": 0.38,
+      "hover": true,
+      "description": "The Master Ring forged by the Dark Lord Sauron in the fires of Mount Doom. Inscribed with glowing Tengwar runes, it hovers in the glass showcase while its haunting violin theme plays.",
       "license": "Legendarium Showcase",
       "download": null
     }

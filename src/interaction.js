@@ -66,6 +66,10 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
       img.src = ex.src;
       img.style.display = 'block';
     } else if (ex.type === 'audio') {
+      if (ex.thumb) {
+        img.src = ex.thumb;
+        img.style.display = 'block';
+      }
       audioEl.src = ex.src;
       audioWrap.style.display = 'block';
       audioEl.play().catch(() => {});
@@ -74,7 +78,9 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
       videoWrap.style.display = 'block';
       videoEl.play().catch(() => {});
     } else if (ex.type === 'model') {
-      img.style.display = 'none';
+      const thumb = ex.thumb || (ex.id === 'one_ring' ? '/assets/images/one_ring.png' : '/assets/images/eiffel.jpg');
+      img.src = thumb;
+      img.style.display = 'block';
       if (ex.audioSrc || ex.id === 'one_ring') {
         const audioSrc = ex.audioSrc || '/assets/audio/the_one_ring_violin.mp3';
         audioEl.src = audioSrc;
@@ -111,8 +117,20 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
   // Clicking an exhibit in focus opens it directly
   window.addEventListener('click', e => {
     if (open) return;
-    if (current && e.target.tagName !== 'BUTTON' && !panel.contains(e.target)) {
+    if (e.target.tagName === 'BUTTON' || panel.contains(e.target)) return;
+    if (current) {
       show(current.userData.exhibit);
+    } else {
+      const mouse = {
+        x: (e.clientX / innerWidth) * 2 - 1,
+        y: -(e.clientY / innerHeight) * 2 + 1
+      };
+      ray.setFromCamera(mouse, camera);
+      const hit = ray.intersectObjects(all, true)[0];
+      if (hit) {
+        const found = owner(hit.object);
+        if (found) show(found.userData.exhibit);
+      }
     }
   });
 

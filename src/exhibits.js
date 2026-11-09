@@ -268,6 +268,23 @@ function audioStation(ex) {
   };
 }
 
+// Procedural ring stand-in while .glb is loading
+function proceduralRing(radius = 0.19, tube = 0.038) {
+  const g = new THREE.Group();
+  const ringGeom = new THREE.TorusGeometry(radius, tube, 24, 48);
+  const ringMat = new THREE.MeshStandardMaterial({
+    color: 0xdfb140,
+    metalness: 0.94,
+    roughness: 0.2,
+    emissive: 0x4a3205
+  });
+  const mesh = new THREE.Mesh(ringGeom, ringMat);
+  mesh.rotation.x = 0.42;
+  mesh.castShadow = true;
+  g.add(mesh);
+  return g;
+}
+
 // Procedural stand-in used until a real .glb is loaded
 function proceduralEiffel(height) {
   const g = new THREE.Group(), mat = new THREE.MeshStandardMaterial({ color: 0x6b5a48, metalness: 0.6, roughness: 0.5 });
@@ -303,7 +320,8 @@ function modelPedestal(ex) {
   const [x, z] = ex.pos, g = new THREE.Group(), ped = 1.0;
   g.add(pedestal(g, x, z, 1.2, ped));
 
-  const vitrineH = ex.height + 0.35;
+  const isRing = ex.id === 'one_ring';
+  const vitrineH = isRing ? 0.95 : (ex.height + 0.35);
   const glass = new THREE.Mesh(
     new THREE.BoxGeometry(1.12, vitrineH, 1.12),
     new THREE.MeshPhysicalMaterial({
@@ -331,12 +349,24 @@ function modelPedestal(ex) {
   }
 
   const holder = new THREE.Group();
-  holder.position.set(x, ped + 0.02, z);
+  const baseY = isRing ? (ped + vitrineH / 2) : (ped + 0.02);
+  holder.position.set(x, baseY, z);
   g.add(holder);
-  holder.add(proceduralEiffel(ex.height));
 
-  const draco = new DRACOLoader().setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
-  new GLTFLoader().setDRACOLoader(draco).load(
+  // Initial stand-in while GLTF loads
+  if (isRing) {
+    holder.add(proceduralRing(0.19, 0.038));
+  } else {
+    holder.add(proceduralEiffel(ex.height));
+  }
+
+  const loader = new GLTFLoader();
+  try {
+    const draco = new DRACOLoader().setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+    loader.setDRACOLoader(draco);
+  } catch (_) {}
+
+  loader.load(
     ex.src,
     gltf => {
       holder.clear();
@@ -345,17 +375,50 @@ function modelPedestal(ex) {
         if (child.isMesh) {
           child.castShadow = true;
           child.receiveShadow = true;
+          if (isRing && child.material) {
+            child.material.metalness = 0.96;
+            child.material.roughness = 0.16;
+            child.material.envMapIntensity = 2.4;
+          }
         }
       });
+
+      // Fit to target size along maximum dimension
       const b = new THREE.Box3().setFromObject(m);
-      const s = ex.height / (b.max.y - b.min.y);
+      const size = new THREE.Vector3();
+      b.getSize(size);
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const targetSize = ex.targetSize || ex.height;
+      const s = targetSize / Math.max(maxDim, 0.001);
       m.scale.setScalar(s);
-      b.setFromObject(m);
-      m.position.set(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2);
+
+      // Recompute bounding box after scale
+      const b2 = new THREE.Box3().setFromObject(m);
+      const center = new THREE.Vector3();
+      b2.getCenter(center);
+
+      if (isRing) {
+        // Center ring precisely at origin of holder
+        m.position.sub(center);
+        // Tilt ring ~24 deg on X and slight tilt on Z to reveal Elvish runes and opening to viewer
+        m.rotation.x = 0.42;
+        m.rotation.z = 0.12;
+
+        // Aura point light at center of the One Ring
+        const ringGlow = new THREE.PointLight(0xffa522, 2.5, 1.6, 2);
+        ringGlow.position.set(0, 0, 0);
+        holder.add(ringGlow);
+      } else {
+        // Center on X and Z, place base directly on the pedestal surface
+        m.position.set(-center.x, -b2.min.y, -center.z);
+      }
+
       holder.add(m);
     },
     undefined,
-    () => {}
+    err => {
+      console.warn(`Could not load model for ${ex.id}:`, err);
+    }
   );
 
   const pl = new THREE.Mesh(
@@ -366,14 +429,24 @@ function modelPedestal(ex) {
   g.add(pl);
 
   // Spotlight with soft contact shadow
-  spot(g, new THREE.Vector3(x, H - 0.3, z + 0.6), new THREE.Vector3(x, ped + ex.height / 2, z), 48, true);
+  const spotTargetY = isRing ? baseY : (ped + ex.height / 2);
+  spot(g, new THREE.Vector3(x, H - 0.3, z + 0.6), new THREE.Vector3(x, spotTargetY, z), isRing ? 54 : 48, true);
 
-  const hi = highlight(1.3, ped + ex.height + 0.4, 1.3);
-  hi.position.set(x, (ped + ex.height + 0.4) / 2, z);
+  const hiHeight = isRing ? (vitrineH + 0.1) : (ex.height + 0.4);
+  const hi = highlight(1.3, ped + hiHeight, 1.3);
+  hi.position.set(x, (ped + hiHeight) / 2, z);
   g.add(hi);
   g.userData = { exhibit: ex, highlight: hi };
 
-  return { object: g, collider: box(x, z, 1.2, 1.2), rotator: holder };
+  const rotator = {
+    holder,
+    isRing,
+    baseY,
+    speed: isRing ? 0.75 : 0.25,
+    time: Math.random() * 10
+  };
+
+  return { object: g, collider: box(x, z, 1.2, 1.2), rotator };
 }
 
 export async function buildExhibits(scene, colliders) {
@@ -392,7 +465,16 @@ export async function buildExhibits(scene, colliders) {
     startMedia: () => medias.forEach(m => m.start()),
     update: (cam, dt = 0.016) => {
       medias.forEach(m => m.update(cam.position.distanceTo(m.pos)));
-      rotators.forEach(r => { r.rotation.y += dt * 0.4; });
+      rotators.forEach(r => {
+        r.time += dt;
+        r.holder.rotation.y += dt * r.speed;
+        if (r.isRing) {
+          // Smooth vertical hovering bob
+          r.holder.position.y = r.baseY + Math.sin(r.time * 2.2) * 0.038;
+          // Subtle gyroscopic wobble
+          r.holder.rotation.z = Math.sin(r.time * 1.5) * 0.06;
+        }
+      });
     },
   };
 }
