@@ -51,14 +51,37 @@ export function createPlayer(camera, dom, colliders, options = {}) {
 
   // Helper to calculate joy base center in viewport coordinates
   function getJoyBaseCenter() {
-    if (!joyBase) return { x: 80, y: window.innerHeight - 80 };
+    if (!joyBase) return { x: 92, y: window.innerHeight - 88 };
     const rect = joyBase.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      return { x: 92, y: window.innerHeight - 88 };
+    }
     return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   }
 
   // --- Virtual Joystick Touch Handlers ---
   function handleJoyStart(touch) {
     moveTouchId = touch.identifier;
+    
+    // Check distance to resting joystick base
+    const currentCenter = getJoyBaseCenter();
+    const dist = Math.hypot(touch.clientX - currentCenter.x, touch.clientY - currentCenter.y);
+    
+    // If touched further than 60px away in the left zone, dynamically position base under thumb
+    if (dist > 60 && joyBase) {
+      const halfSize = 62;
+      const minX = 20 + halfSize;
+      const maxX = Math.min(window.innerWidth * 0.42, window.innerWidth - halfSize);
+      const minY = window.innerHeight * 0.35 + halfSize;
+      const maxY = window.innerHeight - 16 - halfSize;
+      
+      const cx = Math.max(minX, Math.min(touch.clientX, maxX));
+      const cy = Math.max(minY, Math.min(touch.clientY, maxY));
+      
+      joyBase.style.left = `${cx - halfSize}px`;
+      joyBase.style.bottom = `${window.innerHeight - cy - halfSize}px`;
+    }
+
     joyCenter = getJoyBaseCenter();
     handleJoyMove(touch);
     joyBase?.classList.add('active');
@@ -67,7 +90,7 @@ export function createPlayer(camera, dom, colliders, options = {}) {
   function handleJoyMove(touch) {
     const dx = touch.clientX - joyCenter.x;
     const dy = touch.clientY - joyCenter.y;
-    const maxR = 48;
+    const maxR = 52;
     const dist = Math.hypot(dx, dy);
     const clampDist = Math.min(dist, maxR);
     const angle = Math.atan2(dy, dx);
@@ -90,6 +113,11 @@ export function createPlayer(camera, dom, colliders, options = {}) {
       joyThumb.style.transform = 'translate(-50%, -50%)';
     }
     joyBase?.classList.remove('active');
+    // Restore base to default anchored position
+    if (joyBase) {
+      joyBase.style.left = '';
+      joyBase.style.bottom = '';
+    }
   }
 
   // --- Camera Look Zone Handlers ---
@@ -194,9 +222,13 @@ export function createPlayer(camera, dom, colliders, options = {}) {
 
   // Mobile Sprint Button binding
   if (btnSprint) {
+    let lastSprintTap = 0;
     const toggleSprint = e => {
-      e.preventDefault();
-      e.stopPropagation();
+      e?.preventDefault();
+      e?.stopPropagation();
+      const now = performance.now();
+      if (now - lastSprintTap < 250) return;
+      lastSprintTap = now;
       isSprintActive = !isSprintActive;
       btnSprint.classList.toggle('active', isSprintActive);
     };

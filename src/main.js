@@ -176,13 +176,39 @@ if (isMobileDevice) {
   if (keysEl) keysEl.textContent = 'Left joystick move · Drag right look · Tap or Interact to inspect';
 }
 
+const requestLandscape = async () => {
+  try {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen();
+    }
+  } catch (_) {}
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      await screen.orientation.lock('landscape');
+    }
+  } catch (_) {}
+};
+
+const btnForceLandscape = $('btnForceLandscape');
+if (btnForceLandscape) {
+  const handleForceLandscape = async e => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    await requestLandscape();
+  };
+  btnForceLandscape.addEventListener('touchstart', handleForceLandscape, { passive: false });
+  btnForceLandscape.addEventListener('click', handleForceLandscape);
+}
+
 const enterMuseum = () => {
   initAudio();
   resumeAudio();
   exhibits.startMedia();
   player.startTour();
   $('start').classList.add('hide');
-  if (!player.isMobile()) {
+  if (isMobileDevice) {
+    requestLandscape();
+  } else {
     player.controls.lock();
   }
 };
@@ -278,13 +304,24 @@ $('btnFullscreen')?.addEventListener('click', handleFsToggle);
 $('menuFsBtn')?.addEventListener('click', handleFsToggle);
 document.addEventListener('fullscreenchange', updateFsUI);
 
-// --- Responsive Window Resize ---
-addEventListener('resize', () => {
+// --- Responsive Window Resize & Orientation Change ---
+function handleResize() {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
   composer?.setSize(innerWidth, innerHeight);
+}
+addEventListener('resize', handleResize);
+addEventListener('orientationchange', () => {
+  setTimeout(handleResize, 100);
+  setTimeout(handleResize, 300);
 });
+if (window.screen?.orientation) {
+  window.screen.orientation.addEventListener('change', () => {
+    setTimeout(handleResize, 100);
+    setTimeout(handleResize, 300);
+  });
+}
 
 // --- Background Tab Throttling (battery & thermal savings) ---
 document.addEventListener('visibilitychange', () => {

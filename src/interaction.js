@@ -405,9 +405,13 @@ export function createInteraction({ camera, targets, blockers, controls, player,
 
   // Bind dedicated mobile interact button
   if (btnInteract) {
+    let lastInteractTap = 0;
     const onInteractTap = e => {
-      e.preventDefault();
-      e.stopPropagation();
+      e?.preventDefault();
+      e?.stopPropagation();
+      const now = performance.now();
+      if (now - lastInteractTap < 250) return;
+      lastInteractTap = now;
       interact();
     };
     btnInteract.addEventListener('touchstart', onInteractTap, { passive: false });

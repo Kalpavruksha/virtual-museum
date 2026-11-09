@@ -4,6 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Virtual Museum</title>
+<script>
+  (function() {
+    var ua = navigator.userAgent || '';
+    var isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    var isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    var isCoarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    if (isMobileUA || (isTouch && (window.innerWidth <= 1024 || isCoarse))) {
+      document.documentElement.classList.add('mobile-device');
+      window.__IS_MOBILE__ = true;
+    }
+  })();
+</script>
 <style>
 @font-face {
   font-family: 'Aniron';
@@ -479,25 +491,161 @@ button:hover {
   box-shadow: 0 0 10px var(--gold-glow);
 }
 
+/* --- Rotate Sideways Overlay (Mobile Only in Portrait) --- */
+.rotate-overlay {
+  display: none !important;
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: radial-gradient(circle at center, rgba(26, 20, 15, 0.98) 0%, rgba(8, 6, 5, 0.99) 100%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Strictly ONLY on mobile devices when in portrait orientation */
+@media (orientation: portrait) {
+  html.mobile-device .rotate-overlay,
+  body.is-touch-device .rotate-overlay {
+    display: flex !important;
+  }
+}
+
+/* Strictly hidden when rotated sideways in landscape */
+@media (orientation: landscape) {
+  .rotate-overlay {
+    display: none !important;
+  }
+}
+
+.rotate-card {
+  max-width: 400px;
+  width: 90vw;
+  background: rgba(18, 15, 12, 0.96);
+  border: 1.5px solid var(--gold);
+  box-shadow: 0 0 35px var(--gold-glow), 0 20px 60px rgba(0, 0, 0, 0.92);
+  border-radius: 8px;
+  padding: 2.2rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.rotate-anim-wrap {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rotate-phone-icon {
+  width: 46px;
+  height: 80px;
+  border: 2.5px solid var(--gold2);
+  border-radius: 8px;
+  position: relative;
+  background: rgba(14, 12, 10, 0.85);
+  box-shadow: 0 0 18px rgba(232, 195, 106, 0.45);
+  animation: rotatePhoneAnim 2.8s infinite ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rotate-phone-icon::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 2.5px;
+  border-radius: 2px;
+  background: rgba(232, 195, 106, 0.7);
+}
+
+.phone-screen-glow {
+  width: 32px;
+  height: 58px;
+  background: radial-gradient(circle, rgba(232, 195, 106, 0.3) 0%, rgba(232, 195, 106, 0.05) 100%);
+  border: 1px dashed rgba(232, 195, 106, 0.4);
+  border-radius: 4px;
+}
+
+@keyframes rotatePhoneAnim {
+  0% { transform: rotate(0deg); }
+  22% { transform: rotate(0deg); }
+  52% { transform: rotate(-90deg); }
+  78% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.rotate-title {
+  font-family: 'Aniron', Georgia, serif;
+  font-size: clamp(1.15rem, 4.2vw, 1.45rem);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--gold2);
+  line-height: 1.35;
+  text-shadow: 0 0 14px rgba(232, 195, 106, 0.55);
+}
+
+.rotate-desc {
+  font-family: 'Aniron', Georgia, serif;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: #d4ccb8;
+  letter-spacing: 0.04em;
+  max-width: 320px;
+}
+
+.rotate-force-btn {
+  background: linear-gradient(135deg, rgba(232, 195, 106, 0.22), rgba(184, 151, 90, 0.12));
+  border: 1.5px solid var(--gold2);
+  color: var(--gold2);
+  padding: 0.95rem 1.4rem;
+  border-radius: 4px;
+  font: 700 0.82rem 'Aniron', Georgia, serif;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  box-shadow: 0 0 16px var(--gold-glow);
+  transition: all 0.25s ease;
+  width: 100%;
+}
+.rotate-force-btn:hover, .rotate-force-btn:active {
+  background: var(--gold);
+  color: var(--ink);
+  box-shadow: 0 0 24px rgba(232, 195, 106, 0.8);
+}
+
 /* Mobile Controls Container - Hidden by default on desktop, visible on touch devices */
 .mobile-controls {
   display: none;
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 10;
+  z-index: 25;
   user-select: none;
   -webkit-user-select: none;
 }
 
-body.is-touch-device .mobile-controls,
-@media (pointer: coarse) and (hover: none) {
-  .mobile-controls {
-    display: block;
-  }
-  #cross {
-    opacity: 0.4;
-  }
+/* Strictly show mobile controls when on touch/mobile devices */
+html.mobile-device .mobile-controls,
+body.is-touch-device .mobile-controls {
+  display: block !important;
+}
+
+html.mobile-device #cross,
+body.is-touch-device #cross {
+  opacity: 0.35;
 }
 
 /* Touch Movement Zone (Bottom-Left) */
@@ -506,57 +654,61 @@ body.is-touch-device .mobile-controls,
   left: 0;
   bottom: 0;
   width: 48vw;
-  height: 52vh;
+  height: 60vh;
   pointer-events: auto;
   touch-action: none;
-  z-index: 11;
+  z-index: 26;
 }
 
-/* Virtual Joystick Base */
+/* Virtual Joystick Base - High-Contrast Luminous Gold Rim */
 .joy-base {
   position: absolute;
-  left: calc(24px + env(safe-area-inset-left));
+  left: calc(28px + env(safe-area-inset-left));
   bottom: calc(24px + env(safe-area-inset-bottom));
-  width: 114px;
-  height: 114px;
+  width: 124px;
+  height: 124px;
   border-radius: 50%;
-  border: 2px solid rgba(232, 195, 106, 0.4);
-  background: radial-gradient(circle at center, rgba(30, 24, 18, 0.65) 0%, rgba(12, 10, 8, 0.85) 100%);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7), inset 0 0 16px rgba(0, 0, 0, 0.6);
+  border: 2.5px solid rgba(232, 195, 106, 0.95);
+  background: radial-gradient(circle at center, rgba(42, 34, 24, 0.92) 0%, rgba(14, 12, 10, 0.98) 100%);
+  box-shadow: 0 0 24px rgba(232, 195, 106, 0.45), 0 8px 32px rgba(0, 0, 0, 0.85), inset 0 0 20px rgba(0, 0, 0, 0.85);
   pointer-events: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .joy-base.active {
-  border-color: rgba(232, 195, 106, 0.85);
-  box-shadow: 0 0 16px var(--gold-glow), inset 0 0 20px rgba(232, 195, 106, 0.2);
+  border-color: #ffd880;
+  box-shadow: 0 0 32px rgba(232, 195, 106, 0.75), inset 0 0 24px rgba(232, 195, 106, 0.35);
 }
 .joy-ring {
   position: absolute;
-  inset: 8px;
+  inset: 10px;
   border-radius: 50%;
-  border: 1px dashed rgba(232, 195, 106, 0.25);
+  border: 1.5px dashed rgba(232, 195, 106, 0.5);
 }
 .joy-thumb {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 44px;
-  height: 44px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #ffd988 0%, #b8975a 60%, #684e20 100%);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.75), 0 0 12px rgba(232, 195, 106, 0.4);
-  border: 1.5px solid rgba(255, 240, 200, 0.6);
+  background: radial-gradient(circle at 35% 35%, #fff2cf 0%, #e8c36a 45%, #8c6a28 100%);
+  box-shadow: 0 0 18px rgba(232, 195, 106, 0.75), 0 4px 14px rgba(0, 0, 0, 0.85);
+  border: 2px solid rgba(255, 245, 215, 0.9);
   transform: translate(-50%, -50%);
   transition: transform 0.08s ease-out;
 }
 .joy-base.active .joy-thumb {
   transition: none;
+  box-shadow: 0 0 24px rgba(255, 220, 130, 0.95), 0 4px 16px rgba(0, 0, 0, 0.9);
 }
 .joy-dir {
   position: absolute;
-  font-size: 10px;
-  color: rgba(232, 195, 106, 0.35);
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffd880;
+  text-shadow: 0 0 6px rgba(232, 195, 106, 0.6);
   transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 .dir-n { top: 12px; left: 50%; }
 .dir-s { bottom: 4px; left: 50%; }
@@ -839,13 +991,13 @@ body.is-touch-device .mobile-controls,
   box-shadow: 0 0 16px var(--gold-glow);
 }
 
-/* Minimap Mobile Positioning */
-@media (max-width: 768px) {
+/* Minimap Mobile Positioning & Landscape Modals */
+@media (max-width: 1024px) and (orientation: landscape), (max-height: 520px) {
   #minimap {
-    width: 68px !important;
-    height: 196px !important;
+    width: 60px !important;
+    height: 148px !important;
     right: calc(14px + env(safe-area-inset-right));
-    top: calc(62px + env(safe-area-inset-top));
+    top: calc(56px + env(safe-area-inset-top));
     bottom: auto !important;
     opacity: 0.85;
     border-radius: 4px;
@@ -853,10 +1005,50 @@ body.is-touch-device .mobile-controls,
   .quality-selector {
     display: none; /* Quality accessible via MENU button on mobile */
   }
+  .card {
+    padding: 1rem 1.4rem;
+    max-height: 94vh;
+  }
+  .card h2 {
+    font-size: 1.35rem;
+    margin-bottom: 0.15rem;
+  }
+  #p-meta {
+    font-size: 0.95rem;
+    margin-bottom: 0.4rem;
+  }
+  #p-desc {
+    font-size: 0.82rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+  }
+  .model-viewer-wrap {
+    height: 220px;
+  }
+  #p-img {
+    max-height: 200px;
+  }
+  .menu-card {
+    padding: 1.2rem;
+    max-height: 92vh;
+  }
 }
 </style>
 </head>
 <body>
+<!-- Rotate Device Sideways Overlay (strictly mobile only, portrait orientation only) -->
+<div id="rotateOverlay" class="rotate-overlay">
+  <div class="rotate-card">
+    <div class="rotate-anim-wrap">
+      <div class="rotate-phone-icon">
+        <div class="phone-screen-glow"></div>
+      </div>
+    </div>
+    <div class="rotate-title">ROTATE YOUR DEVICE SIDEWAYS</div>
+    <div class="rotate-desc">For the best 3D virtual museum experience, please turn your phone horizontally to landscape mode.</div>
+    <button id="btnForceLandscape" class="rotate-force-btn">✦ ENTER FULLSCREEN LANDSCAPE ✦</button>
+  </div>
+</div>
 <!-- Mobile Game-Style Controls -->
 <div id="mobileControls" class="mobile-controls">
   <!-- Left Side: Movement Touch Zone & Virtual Joystick -->
