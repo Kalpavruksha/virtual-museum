@@ -129,5 +129,99 @@ export function buildArchitecture(scene, options = {}) {
     }
   });
 
+  // --- Gallery Benches (Paintings Gallery) ---
+  const benchWoodMat = new THREE.MeshStandardMaterial({ color: 0x241810, roughness: 0.38 });
+  const benchLeatherMat = new THREE.MeshStandardMaterial({ color: 0x1a1614, roughness: 0.72 });
+  const benchMetalMat = new THREE.MeshStandardMaterial({ color: 0x997a38, metalness: 0.85, roughness: 0.25 });
+
+  const benchPositions = [
+    { x: -3.8, z: -13 },
+    { x: 3.8, z: -13 }
+  ];
+
+  benchPositions.forEach(bp => {
+    const bg = new THREE.Group();
+    bg.position.set(bp.x, 0, bp.z);
+
+    // Dark walnut wooden plinth / base
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.08, 2.3), benchWoodMat);
+    base.position.y = 0.04;
+    base.castShadow = true;
+    base.receiveShadow = true;
+    bg.add(base);
+
+    // Turned brass legs
+    for (const lx of [-0.36, 0.36]) {
+      for (const lz of [-1.0, 1.0]) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.02, 0.32, 12), benchMetalMat);
+        leg.position.set(lx, 0.24, lz);
+        leg.castShadow = true;
+        bg.add(leg);
+      }
+    }
+
+    // Padded leather cushion
+    const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.14, 2.22), benchLeatherMat);
+    cushion.position.y = 0.47;
+    cushion.castShadow = true;
+    cushion.receiveShadow = true;
+    bg.add(cushion);
+
+    scene.add(bg);
+    blockers.push(bg);
+
+    // Collision box
+    colliders.push({
+      minX: bp.x - 0.45,
+      maxX: bp.x + 0.45,
+      minZ: bp.z - 1.15,
+      maxZ: bp.z + 1.15
+    });
+  });
+
+  // --- Grand Entrance Hall Inscription Sign ---
+  function createMuseumSign() {
+    const sg = new THREE.Group();
+    sg.position.set(0, 4.35, -5.78);
+
+    const tabletMat = new THREE.MeshStandardMaterial({ color: 0x2a241e, roughness: 0.4, metalness: 0.1 });
+    const tablet = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.9, 0.06), tabletMat);
+    tablet.castShadow = true;
+    sg.add(tablet);
+
+    const signGold = new THREE.MeshStandardMaterial({ color: 0xb8975a, metalness: 0.8, roughness: 0.3 });
+    const border = new THREE.Mesh(new THREE.BoxGeometry(4.72, 1.02, 0.08), signGold);
+    border.position.z = -0.01;
+    sg.add(border);
+
+    const c = document.createElement('canvas'); c.width = 1024; c.height = 256;
+    const g = c.getContext('2d');
+    g.fillStyle = '#161310'; g.fillRect(0, 0, 1024, 256);
+    g.strokeStyle = '#c9a84c'; g.lineWidth = 4; g.strokeRect(16, 16, 992, 224);
+    g.fillStyle = '#f5dfa0'; g.textAlign = 'center';
+    g.font = 'bold 50px Georgia, serif';
+    g.fillText('M U S É E   D E S   B E A U X - A R T S', 512, 95);
+    g.font = 'italic 32px Georgia, serif'; g.fillStyle = '#c9a84c';
+    g.fillText('Collection Permanente · Masterpieces of Art', 512, 160);
+    g.font = '22px Inter, sans-serif'; g.fillStyle = '#8e7d65';
+    g.fillText('VIRTUAL MUSEUM · MCMXXVI', 512, 206);
+
+    const signTex = new THREE.CanvasTexture(c);
+    signTex.colorSpace = THREE.SRGBColorSpace;
+    const signFace = new THREE.Mesh(
+      new THREE.PlaneGeometry(4.5, 0.8),
+      new THREE.MeshStandardMaterial({ map: signTex, roughness: 0.4, metalness: 0.15 })
+    );
+    signFace.position.z = 0.032;
+    sg.add(signFace);
+
+    const signLight = new THREE.PointLight(0xfff2dc, 8, 8, 2);
+    signLight.position.set(0, 0, 1.2);
+    sg.add(signLight);
+
+    scene.add(sg);
+  }
+  createMuseumSign();
+
   return { colliders, blockers };
 }

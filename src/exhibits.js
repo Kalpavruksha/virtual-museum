@@ -2,12 +2,13 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { L, EXHIBITS, room, placeOnWall } from './layout.js';
-import { loadTexture, labelTexture, plaqueTexture, tileBox } from './materials.js';
+import { loadTexture, labelTexture, plaqueTexture, tileBox, getCanvasNormalMap } from './materials.js';
 
 const H = L.wallHeight;
-const goldMat = new THREE.MeshStandardMaterial({ color: 0x9a7a35, metalness: 0.7, roughness: 0.35 });
-const matteMat = new THREE.MeshStandardMaterial({ color: 0xefe8d8, roughness: 0.9 });
-const pedMat = new THREE.MeshStandardMaterial({ color: 0x1b1b1f, roughness: 0.3, metalness: 0.1 });
+const goldMat = new THREE.MeshStandardMaterial({ color: 0x9e7f38, metalness: 0.75, roughness: 0.28 });
+const matteMat = new THREE.MeshStandardMaterial({ color: 0xefe8d8, roughness: 0.92 });
+const pedMat = new THREE.MeshStandardMaterial({ color: 0x18181c, roughness: 0.35, metalness: 0.08 });
+const brassMat = new THREE.MeshStandardMaterial({ color: 0xc8a452, metalness: 0.85, roughness: 0.22 });
 const fixtureMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
 const bulbMat = new THREE.MeshBasicMaterial({ color: 0xfff6dc });
 const hiMat = new THREE.LineBasicMaterial({ color: 0xe8c36a });
@@ -59,12 +60,19 @@ async function frameArt(ex) {
 
   const art = new THREE.Mesh(
     new THREE.PlaneGeometry(w, h),
-    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.55 })
+    new THREE.MeshStandardMaterial({
+      map: tex,
+      normalMap: getCanvasNormalMap(),
+      normalScale: new THREE.Vector2(0.24, 0.24),
+      roughness: 0.45,
+      metalness: 0.02
+    })
   );
   art.position.z = D / 2;
   g.add(mat, art);
 
   const W = w + 2 * m + 2 * fr, Hh = h + 2 * m + 2 * fr;
+  // Tier 1: Outer classic gold frame
   for (const [bw, bh, bx, by] of [
     [W, fr, 0, (Hh - fr) / 2],
     [W, fr, 0, -(Hh - fr) / 2],
@@ -72,6 +80,34 @@ async function frameArt(ex) {
     [fr, Hh, -(W - fr) / 2, 0]
   ]) {
     const b = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, D), goldMat);
+    b.position.set(bx, by, D / 2 - 0.005);
+    b.castShadow = true;
+    g.add(b);
+  }
+
+  // Tier 2: Raised decorative gold bead moulding
+  const beadFr = fr * 0.38, beadW = W - fr * 0.8, beadH = Hh - fr * 0.8, beadD = D * 1.28;
+  for (const [bw, bh, bx, by] of [
+    [beadW, beadFr, 0, (beadH - beadFr) / 2],
+    [beadW, beadFr, 0, -(beadH - beadFr) / 2],
+    [beadFr, beadH, (beadW - beadFr) / 2, 0],
+    [beadFr, beadH, -(beadW - beadFr) / 2, 0]
+  ]) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, beadD), goldMat);
+    b.position.set(bx, by, beadD / 2 - 0.003);
+    g.add(b);
+  }
+
+  // Tier 3: Burnished dark walnut liner between frame and matte
+  const linerFr = 0.018, linerW = W - fr * 1.5, linerH = Hh - fr * 1.5;
+  const linerMat = new THREE.MeshStandardMaterial({ color: 0x1f1712, roughness: 0.65 });
+  for (const [bw, bh, bx, by] of [
+    [linerW, linerFr, 0, (linerH - linerFr) / 2],
+    [linerW, linerFr, 0, -(linerH - linerFr) / 2],
+    [linerFr, linerH, (linerW - linerFr) / 2, 0],
+    [linerFr, linerH, -(linerW - linerFr) / 2, 0]
+  ]) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, D * 0.88), linerMat);
     b.position.set(bx, by, D / 2 - 0.005);
     g.add(b);
   }
@@ -149,6 +185,27 @@ function pedestal(scene, x, z, w, hgt) {
   p.position.set(x, hgt / 2, z);
   p.castShadow = true;
   p.receiveShadow = true;
+  scene.add(p);
+
+  // Plinth base moulding
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(w + 0.12, 0.08, w + 0.12), pedMat);
+  plinth.position.set(x, 0.04, z);
+  plinth.receiveShadow = true;
+  scene.add(plinth);
+
+  // Slim polished brass rail around top perimeter
+  const rw = w + 0.02, rh = 0.024, rd = 0.024;
+  for (const [bx, bz, bw, bd] of [
+    [x, z + w / 2, rw, rd],
+    [x, z - w / 2, rw, rd],
+    [x + w / 2, z, rd, rw],
+    [x - w / 2, z, rd, rw]
+  ]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(bw, rh, bd), brassMat);
+    rail.position.set(bx, hgt + rh / 2, bz);
+    scene.add(rail);
+  }
+
   return p;
 }
 
@@ -238,19 +295,32 @@ function modelPedestal(ex) {
   const [x, z] = ex.pos, g = new THREE.Group(), ped = 1.0;
   g.add(pedestal(g, x, z, 1.2, ped));
 
+  const vitrineH = ex.height + 0.35;
   const glass = new THREE.Mesh(
-    new THREE.BoxGeometry(1.1, ex.height + 0.3, 1.1),
+    new THREE.BoxGeometry(1.12, vitrineH, 1.12),
     new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
       transparent: true,
-      opacity: 0.15,
-      roughness: 0.03,
-      metalness: 0,
+      opacity: 0.2,
+      roughness: 0.04,
+      metalness: 0.0,
+      transmission: 0.88,
+      thickness: 0.3,
+      ior: 1.52,
       depthWrite: false
     })
   );
-  glass.position.set(x, ped + (ex.height + 0.3) / 2, z);
+  glass.position.set(x, ped + vitrineH / 2, z);
   g.add(glass);
+
+  // Brass corner clips on the glass vitrine
+  for (const cx of [x - 0.55, x + 0.55]) {
+    for (const cz of [z - 0.55, z + 0.55]) {
+      const clip = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.07, 0.04), brassMat);
+      clip.position.set(cx, ped + vitrineH - 0.035, cz);
+      g.add(clip);
+    }
+  }
 
   const holder = new THREE.Group();
   holder.position.set(x, ped + 0.02, z);

@@ -227,3 +227,16 @@ export function plaqueTexture(title, artist, year) {
   g.font = 'italic 26px Georgia, serif'; g.fillText(year, 256, 200, 470);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
 }
+
+let canvasNormalCache = null;
+export function getCanvasNormalMap() {
+  if (canvasNormalCache) return canvasNormalCache;
+  canvasNormalCache = generateNormalMap((x, y) => {
+    // Linen fabric cross-hatch weave
+    const weave = (Math.sin(x * 1.5) * Math.sin(y * 1.5)) * 0.16;
+    // Directional impasto brush strokes
+    const stroke = Math.sin(x * 0.35 + y * 0.18) * 0.12 + Math.cos(x * 0.12 - y * 0.28) * 0.08;
+    return weave + stroke;
+  }, 256, 2.2);
+  return canvasNormalCache;
+}
