@@ -54,15 +54,15 @@ const qualitySetting = urlQ || savedQ || (isMobileDevice ? 'auto' : 'high'); // 
 function resolveQuality(setting) {
   if (setting === 'auto') {
     if (isMobileDevice) {
-      return { id: 'medium', pr: Math.min(window.devicePixelRatio, 1.25), bloom: false, reflector: false, shadows: true, antialias: true };
+      return { id: 'low', pr: 1.0, bloom: false, reflector: false, shadows: false, antialias: false };
     }
     return { id: 'high', pr: Math.min(window.devicePixelRatio, 1.5), bloom: true, reflector: true, reflectorRes: 512, shadows: true, antialias: true };
   }
   return {
     low: { id: 'low', pr: 1.0, bloom: false, reflector: false, shadows: false, antialias: false },
-    medium: { id: 'medium', pr: Math.min(window.devicePixelRatio, 1.25), bloom: false, reflector: true, reflectorRes: 512, shadows: true, antialias: true },
+    medium: { id: 'medium', pr: Math.min(window.devicePixelRatio, 1.25), bloom: false, reflector: false, shadows: true, antialias: true },
     high: { id: 'high', pr: Math.min(window.devicePixelRatio, isMobileDevice ? 1.5 : 2.0), bloom: true, reflector: true, reflectorRes: isMobileDevice ? 512 : 1024, shadows: true, antialias: true }
-  }[setting] || { id: 'medium', pr: 1.2, bloom: false, reflector: false, shadows: true, antialias: true };
+  }[setting] || { id: 'low', pr: 1.0, bloom: false, reflector: false, shadows: false, antialias: false };
 }
 
 const Q = resolveQuality(qualitySetting);
