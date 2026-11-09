@@ -140,6 +140,7 @@ function videoScreen(ex) {
   video.playsInline = true;
   video.crossOrigin = 'anonymous';
   video.preload = 'auto';
+  video.muted = true; // guarantees instant autoplay approval in modern browsers
   video.volume = 0;
 
   const screenMat = new THREE.MeshBasicMaterial({ map: labelTexture(ex.title, 'loading…', w / h), toneMapped: false });
@@ -174,7 +175,14 @@ function videoScreen(ex) {
     object: g,
     media: {
       start: () => video.play().catch(() => {}),
-      update: d => { video.volume = THREE.MathUtils.clamp(1 - d / 12, 0, 1) * 0.8; },
+      update: d => {
+        if (d < 12) {
+          video.muted = false;
+          video.volume = THREE.MathUtils.clamp(1 - d / 12, 0, 1) * 0.85;
+        } else {
+          video.volume = 0;
+        }
+      },
       pos
     }
   };
