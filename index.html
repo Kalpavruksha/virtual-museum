@@ -164,16 +164,34 @@ button:hover {
 }
 .card {
   position: relative;
-  max-width: 860px;
-  width: 100%;
-  max-height: 88vh;
+  max-width: 900px;
+  width: 94vw;
+  max-height: 92vh;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(232, 195, 106, 0.45) rgba(18, 16, 13, 0.7);
   background: #12100d;
   border: 1px solid var(--gold);
   box-shadow: 0 24px 64px rgba(0,0,0,0.85), 0 0 32px var(--gold-glow);
-  padding: 2.2rem;
+  padding: 1.6rem 2rem;
   display: flex;
   flex-direction: column;
+}
+.card::-webkit-scrollbar, ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.card::-webkit-scrollbar-track, ::-webkit-scrollbar-track {
+  background: rgba(18, 16, 13, 0.85);
+  border-radius: 4px;
+}
+.card::-webkit-scrollbar-thumb, ::-webkit-scrollbar-thumb {
+  background: rgba(232, 195, 106, 0.45);
+  border-radius: 4px;
+}
+.card::-webkit-scrollbar-thumb:hover, ::-webkit-scrollbar-thumb:hover {
+  background: rgba(232, 195, 106, 0.8);
+  box-shadow: 0 0 8px rgba(232, 195, 106, 0.6);
 }
 .p-close-x {
   position: absolute;
@@ -264,51 +282,52 @@ button:hover {
   width: 100%;
 }
 .inscription-banner {
-  margin: 0.8rem 0 1.2rem;
+  margin: 0.5rem 0 0.8rem;
   background: #080605;
   border: 1px solid rgba(232, 195, 106, 0.4);
   border-radius: 4px;
-  padding: 0.85rem;
+  padding: 0.65rem 0.85rem;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
 }
 .inscr-title {
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   letter-spacing: 0.14em;
   color: var(--gold2);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
   font-weight: 600;
 }
 #p-inscription-img {
   width: 100%;
-  height: auto;
+  max-height: 62px;
+  object-fit: contain;
   border-radius: 2px;
   background: #050403;
-  padding: 6px;
-  margin-bottom: 0.6rem;
+  padding: 4px 8px;
+  margin-bottom: 0.45rem;
   border: 1px solid rgba(184, 151, 90, 0.25);
 }
 .inscr-text {
-  font-size: 0.82rem;
-  line-height: 1.5;
+  font-size: 0.78rem;
+  line-height: 1.4;
   color: #ded6c2;
 }
 .inscr-line {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
   color: #f0e6ce;
 }
 .inscr-line strong {
   color: var(--gold);
-  font-size: 0.72rem;
+  font-size: 0.70rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 .inscr-trans {
-  margin-top: 0.6rem;
-  font: italic 0.95rem var(--serif);
+  margin-top: 0.45rem;
+  font: italic 0.88rem var(--serif);
   color: var(--gold2);
   border-top: 1px dashed rgba(184, 151, 90, 0.4);
-  padding-top: 0.5rem;
-  line-height: 1.45;
+  padding-top: 0.4rem;
+  line-height: 1.4;
   letter-spacing: 0.02em;
 }
 .info-col {
@@ -318,7 +337,7 @@ button:hover {
 .badges {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 0.8rem;
+  margin-bottom: 0.6rem;
 }
 .badge {
   font-size: 0.72rem;
@@ -330,28 +349,28 @@ button:hover {
   background: rgba(184,151,90,0.12);
 }
 .card h2 {
-  font: 600 2.2rem var(--serif);
+  font: 600 2.0rem var(--serif);
   color: var(--gold2);
-  margin: 0 0 .3rem;
+  margin: 0 0 .25rem;
   line-height: 1.15;
 }
 #p-meta {
-  font: italic 1.25rem var(--serif);
+  font: italic 1.15rem var(--serif);
   color: var(--gold);
-  margin-bottom: 1.2rem;
+  margin-bottom: 0.8rem;
 }
 #p-desc {
-  line-height: 1.7;
+  line-height: 1.55;
   color: #d8d0bd;
-  font-size: 0.95rem;
-  margin-bottom: 1.4rem;
+  font-size: 0.92rem;
+  margin-bottom: 0.8rem;
 }
 #p-lic {
   font-size: .75rem;
   letter-spacing: .1em;
   text-transform: uppercase;
   color: #8c8470;
-  margin-bottom: 1.6rem;
+  margin-bottom: 0.9rem;
 }
 .card-actions {
   display: flex;
