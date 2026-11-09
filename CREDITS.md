@@ -16,4 +16,5 @@
 - **Passacaglia / Symphony No. 9** — Classical Masterpiece Series (1824). Format: audio. License: Public domain audio.
 - **Apollo 11 Moon Landing** — NASA (1969). Format: video. License: NASA (Public domain).
 - **Eiffel Tower (Scale Model)** — Gustave Eiffel's engineering team (1889). Format: model. License: Creative Commons 3D Model.
+- **The One Ring** — Sauron / J.R.R. Tolkien Legendarium (Second Age c. 1600). Format: model + audio. Audio: The One Ring Violin Theme. License: Fantasy Artifact Showcase.
 
