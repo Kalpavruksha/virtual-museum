@@ -283,7 +283,7 @@ function audioStation(ex) {
 }
 
 // Procedural ring stand-in while .glb is loading
-function proceduralRing(radius = 0.19, tube = 0.038) {
+function proceduralRing(radius = 0.27, tube = 0.052) {
   const g = new THREE.Group();
   const ringGeom = new THREE.TorusGeometry(radius, tube, 24, 48);
   const ringMat = new THREE.MeshStandardMaterial({
@@ -293,7 +293,7 @@ function proceduralRing(radius = 0.19, tube = 0.038) {
     emissive: 0x4a3205
   });
   const mesh = new THREE.Mesh(ringGeom, ringMat);
-  mesh.rotation.x = 0.42;
+  mesh.rotation.x = 0.52;
   mesh.castShadow = true;
   g.add(mesh);
   return g;
@@ -389,10 +389,37 @@ function modelPedestal(ex) {
         if (child.isMesh) {
           child.castShadow = true;
           child.receiveShadow = true;
-          if (isRing && child.material) {
-            child.material.metalness = 0.96;
-            child.material.roughness = 0.16;
-            child.material.envMapIntensity = 2.4;
+          if (isRing) {
+            // Split geometry into pure gold ring body and glowing fiery Tengwar inscription
+            const geom = child.geometry;
+            if (geom && geom.index && geom.index.count >= 61440) {
+              geom.clearGroups();
+              geom.addGroup(0, 24576, 0);     // Material 0: Ring body (8,192 triangles)
+              geom.addGroup(24576, 36864, 1); // Material 1: The Words / Inscription (12,288 triangles)
+
+              // Polished 24K gold body
+              const bodyMat = new THREE.MeshStandardMaterial({
+                color: 0xdfaf37,
+                metalness: 0.95,
+                roughness: 0.12,
+                envMapIntensity: 2.2
+              });
+
+              // Fiery glowing Tengwar script words
+              const runeMat = new THREE.MeshStandardMaterial({
+                color: 0xff3800,        // Fiery red-orange
+                emissive: 0xff4500,     // Glowing fiery Tengwar script
+                emissiveIntensity: 3.5, // Bright incandescent Mordor glow
+                metalness: 0.2,
+                roughness: 0.25
+              });
+
+              child.material = [bodyMat, runeMat];
+            } else if (child.material) {
+              child.material.metalness = 0.96;
+              child.material.roughness = 0.16;
+              child.material.envMapIntensity = 2.4;
+            }
           }
         }
       });
@@ -414,12 +441,12 @@ function modelPedestal(ex) {
       if (isRing) {
         // Center ring precisely at origin of holder
         m.position.sub(center);
-        // Tilt ring ~24 deg on X and slight tilt on Z to reveal Elvish runes and opening to viewer
-        m.rotation.x = 0.42;
-        m.rotation.z = 0.12;
+        // Tilt ring ~30 deg on X and diagonal tilt on Z to angle the fiery runes directly at player's eyes
+        m.rotation.x = 0.52;
+        m.rotation.z = 0.14;
 
         // Aura point light at center of the One Ring
-        const ringGlow = new THREE.PointLight(0xffa522, 2.5, 1.6, 2);
+        const ringGlow = new THREE.PointLight(0xff6600, 3.5, 2.2, 2);
         ringGlow.position.set(0, 0, 0);
         holder.add(ringGlow);
       } else {
@@ -444,7 +471,7 @@ function modelPedestal(ex) {
 
   // Spotlight with soft contact shadow
   const spotTargetY = isRing ? baseY : (ped + ex.height / 2);
-  spot(g, new THREE.Vector3(x, H - 0.3, z + 0.6), new THREE.Vector3(x, spotTargetY, z), isRing ? 54 : 48, true);
+  spot(g, new THREE.Vector3(x, H - 0.3, z + 0.6), new THREE.Vector3(x, spotTargetY, z), isRing ? 60 : 48, true);
 
   const hiHeight = isRing ? (vitrineH + 0.1) : (ex.height + 0.4);
   const hi = highlight(1.3, ped + hiHeight, 1.3);
@@ -458,22 +485,29 @@ function modelPedestal(ex) {
     const ringAudio = new Audio(audioSrc);
     ringAudio.loop = true;
     ringAudio.volume = 0;
+    ringAudio.preload = 'auto';
     let started = false;
 
     media = {
       pos: new THREE.Vector3(x, 1, z),
-      start: () => { started = true; },
+      start: () => {
+        started = true;
+        // Prime audio during user click gesture so browser never blocks it
+        ringAudio.play().then(() => {
+          if (ringAudio.volume === 0 && !started) ringAudio.pause();
+        }).catch(() => {});
+      },
       pause: () => {
         if (!ringAudio.paused) ringAudio.pause();
       },
       update: d => {
         if (!started) return;
-        // Intimate monument range: only when near to that monument (within 3.2m)
-        const maxDist = 3.2;
+        // Monument viewing range: plays as you approach and watch the monument (within 5.8m)
+        const maxDist = 5.8;
         if (d < maxDist) {
-          const vol = THREE.MathUtils.clamp((maxDist - d) / (maxDist - 0.4), 0, 1) * 0.75;
+          const vol = THREE.MathUtils.clamp((maxDist - d) / (maxDist - 0.8), 0, 1) * 0.85;
           ringAudio.volume = vol;
-          if (ringAudio.paused && vol > 0.02) ringAudio.play().catch(() => {});
+          if (ringAudio.paused && vol > 0.01) ringAudio.play().catch(() => {});
         } else {
           ringAudio.volume = 0;
           if (!ringAudio.paused) ringAudio.pause();

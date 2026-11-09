@@ -257,9 +257,9 @@
       "thumb": "/assets/images/one_ring.png",
       "audioSrc": "/assets/audio/the_one_ring_violin.mp3",
       "height": 0.5,
-      "targetSize": 0.38,
+      "targetSize": 0.54,
       "hover": true,
-      "description": "The Master Ring forged by the Dark Lord Sauron in the fires of Mount Doom. Inscribed with glowing Tengwar runes, it hovers in the glass showcase while its haunting violin theme plays.",
+      "description": "The Master Ring forged by the Dark Lord Sauron in the fires of Mount Doom. Inscribed with glowing fiery Tengwar runes, it hovers in the glass showcase while its haunting violin theme plays.",
       "license": "Legendarium Showcase",
       "download": null
     }

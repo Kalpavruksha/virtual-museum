@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { L, EXHIBITS, room, placeOnWall } from './layout.js';
 
 export function createMinimap(canvas) {
@@ -7,6 +8,7 @@ export function createMinimap(canvas) {
 
   const X = x => (x - x0) * S;
   const Z = z => (z0 - z) * S;
+  const fwd = new THREE.Vector3();
 
   const roomLabels = {
     hall: 'Entrance',
