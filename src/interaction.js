@@ -119,7 +119,7 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
     modalCamera.updateProjectionMatrix();
 
     const isRing = ex.id === 'one_ring';
-    modalCamera.position.set(0, 0, isRing ? 1.55 : 2.6);
+    modalCamera.position.set(0, 0, isRing ? 2.35 : 2.6);
 
     const loader = new GLTFLoader();
     try {
@@ -185,7 +185,7 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
       const size = new THREE.Vector3();
       b.getSize(size);
       const maxDim = Math.max(size.x, size.y, size.z);
-      const s = (isRing ? 0.95 : 1.6) / Math.max(maxDim, 0.001);
+      const s = (isRing ? 0.72 : 1.6) / Math.max(maxDim, 0.001);
       m.scale.setScalar(s);
 
       const b2 = new THREE.Box3().setFromObject(m);
