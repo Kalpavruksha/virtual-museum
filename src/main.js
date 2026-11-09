@@ -115,6 +115,12 @@ if (Q.bloom) {
   composer.addPass(new OutputPass());
 }
 
+// Preload Aniron font before building 3D canvas signage
+try {
+  await document.fonts.load('bold 42px Aniron');
+  await document.fonts.load('24px Aniron');
+} catch (_) {}
+
 const { colliders, blockers } = buildArchitecture(scene, Q);
 const exhibits = await buildExhibits(scene, colliders);
 const player = createPlayer(camera, renderer.domElement, colliders);
@@ -127,6 +133,52 @@ const interaction = createInteraction({
   panel: $('panel')
 });
 const drawMap = createMinimap($('minimap'));
+
+// Room heading HUD management
+const roomHud = $('roomHud');
+const roomHudTitle = $('roomHudTitle');
+const roomHudSub = $('roomHudSub');
+
+const ROOM_HEADERS = {
+  hall: {
+    title: 'GRAND ENTRANCE HALL',
+    sub: 'Classical Antiquity · Architecture · Leonardo da Vinci'
+  },
+  paintings: {
+    title: 'PAINTINGS GALLERY',
+    sub: 'Masterpieces of Light & Form · Renaissance to Surrealism'
+  },
+  music: {
+    title: 'MUSIC & INSTRUMENTS HALL',
+    sub: 'Ancient Resonance · Acoustic Innovations · Symphonies'
+  },
+  history: {
+    title: 'HISTORY & SCIENCE ROOM',
+    sub: 'Human Achievement · Space Exploration · The One Ring'
+  }
+};
+
+let activeRoomId = null;
+function updateRoomHeading(cz) {
+  let roomId = 'hall';
+  if (cz <= -34) roomId = 'history';
+  else if (cz <= -20) roomId = 'music';
+  else if (cz <= -6) roomId = 'paintings';
+
+  const shouldShow = player.controls.isLocked && !interaction.isOpen();
+
+  if (roomId !== activeRoomId) {
+    activeRoomId = roomId;
+    const info = ROOM_HEADERS[roomId];
+    if (roomHudTitle) roomHudTitle.textContent = info.title;
+    if (roomHudSub) roomHudSub.textContent = info.sub;
+  }
+
+  if (roomHud) {
+    roomHud.style.opacity = shouldShow ? '1' : '0';
+    roomHud.style.transform = shouldShow ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(-10px)';
+  }
+}
 
 $('loading')?.classList.add('hide');
 
@@ -175,5 +227,6 @@ renderer.setAnimationLoop(() => {
   interaction.update();
   exhibits.update(camera, dt, isPaused);
   drawMap(camera);
+  updateRoomHeading(camera.position.z);
   composer ? composer.render() : renderer.render(scene, camera);
 });

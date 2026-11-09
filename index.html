@@ -4,26 +4,41 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Virtual Museum</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
+@font-face {
+  font-family: 'Aniron';
+  src: url('/assets/fonts/Aniron.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Aniron';
+  src: url('/assets/fonts/AnironBold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 :root {
   --gold: #b8975a;
   --gold2: #e8c36a;
   --gold-glow: rgba(232, 195, 106, 0.35);
   --ink: #0b0a09;
-  --serif: 'Cormorant Garamond', Georgia, serif;
-  --sans: 'Inter', system-ui, sans-serif;
+  --serif: 'Aniron', Georgia, serif;
+  --sans: 'Aniron', Georgia, serif;
+  --font-aniron: 'Aniron', Georgia, serif;
 }
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+  font-family: 'Aniron', Georgia, serif;
+}
 html, body {
   margin: 0;
   height: 100%;
   overflow: hidden;
   background: var(--ink);
   color: #e9e2d0;
-  font-family: var(--sans);
+  font-family: 'Aniron', Georgia, serif;
   -webkit-font-smoothing: antialiased;
 }
 canvas { display: block; }
@@ -113,6 +128,46 @@ button:hover {
   box-shadow: 0 0 8px rgba(232,195,106,0.6);
   z-index: 5;
   pointer-events: none;
+}
+/* On-Screen Room Header Banner HUD */
+.room-hud {
+  position: fixed;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  z-index: 6;
+  text-align: center;
+  transition: opacity .45s ease, transform .45s ease;
+  user-select: none;
+  background: rgba(14, 12, 10, 0.78);
+  padding: 8px 26px;
+  border-radius: 4px;
+  border: 1px solid rgba(184, 151, 90, 0.38);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.65), 0 0 16px rgba(232, 195, 106, 0.2);
+  opacity: 0;
+}
+.room-hud-title {
+  font-family: 'Aniron', serif;
+  font-size: clamp(0.95rem, 1.8vw, 1.25rem);
+  font-weight: 700;
+  letter-spacing: 0.20em;
+  color: var(--gold2);
+  text-shadow: 0 0 12px rgba(232, 195, 106, 0.5), 0 2px 4px rgba(0,0,0,0.9);
+  text-transform: uppercase;
+}
+.room-hud-sub {
+  font-family: 'Aniron', serif;
+  font-size: clamp(0.66rem, 1.1vw, 0.78rem);
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  margin-top: 3px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.85);
+  opacity: 0.92;
 }
 #prompt {
   position: fixed;
@@ -470,6 +525,10 @@ button:hover {
   <div class="keys">WASD / arrows move · Shift run · Mouse look · E inspect · Esc pause</div>
 </div>
 <div id="cross"></div>
+<div id="roomHud" class="room-hud">
+  <div id="roomHudTitle" class="room-hud-title">GRAND ENTRANCE HALL</div>
+  <div id="roomHudSub" class="room-hud-sub">Classical Antiquity · Architecture · Leonardo da Vinci</div>
+</div>
 <div id="prompt"></div>
 <canvas id="minimap"></canvas>
 

@@ -213,8 +213,8 @@ export function labelTexture(title, sub, aspect = 1.4) {
   const c = document.createElement('canvas'); c.width = 800; c.height = Math.round(800 / aspect);
   const g = c.getContext('2d'); g.fillStyle = '#2a2622'; g.fillRect(0, 0, c.width, c.height);
   g.strokeStyle = '#b8975a'; g.lineWidth = 6; g.strokeRect(20, 20, c.width - 40, c.height - 40);
-  g.fillStyle = '#b8975a'; g.textAlign = 'center'; g.font = '40px Georgia, serif'; g.fillText(title, c.width / 2, c.height / 2 - 10, c.width - 80);
-  g.font = '22px monospace'; g.fillText(sub, c.width / 2, c.height / 2 + 40, c.width - 80);
+  g.fillStyle = '#b8975a'; g.textAlign = 'center'; g.font = '36px Aniron, Georgia, serif'; g.fillText(title, c.width / 2, c.height / 2 - 10, c.width - 80);
+  g.font = '20px Aniron, monospace'; g.fillText(sub, c.width / 2, c.height / 2 + 40, c.width - 80);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
@@ -222,9 +222,9 @@ export function plaqueTexture(title, artist, year) {
   const c = document.createElement('canvas'); c.width = 512; c.height = 256;
   const g = c.getContext('2d'); g.fillStyle = '#15130f'; g.fillRect(0, 0, 512, 256);
   g.strokeStyle = '#b8975a'; g.lineWidth = 4; g.strokeRect(8, 8, 496, 240);
-  g.textAlign = 'center'; g.fillStyle = '#e8d9b0'; g.font = 'bold 34px Georgia, serif'; g.fillText(title, 256, 90, 470);
-  g.fillStyle = '#b8975a'; g.font = '28px Georgia, serif'; g.fillText(artist, 256, 150, 470);
-  g.font = 'italic 26px Georgia, serif'; g.fillText(year, 256, 200, 470);
+  g.textAlign = 'center'; g.fillStyle = '#e8d9b0'; g.font = 'bold 30px Aniron, Georgia, serif'; g.fillText(title, 256, 90, 470);
+  g.fillStyle = '#b8975a'; g.font = '24px Aniron, Georgia, serif'; g.fillText(artist, 256, 148, 470);
+  g.font = '22px Aniron, Georgia, serif'; g.fillText(year, 256, 198, 470);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
 }
 

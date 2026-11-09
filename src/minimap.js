@@ -54,8 +54,8 @@ export function createMinimap(canvas) {
       g.strokeRect(rx, rz, rw, rd);
 
       // Room name label
-      g.fillStyle = 'rgba(232, 195, 106, 0.6)';
-      g.font = '600 9px Inter, sans-serif';
+      g.fillStyle = 'rgba(232, 195, 106, 0.7)';
+      g.font = '700 9px Aniron, sans-serif';
       g.textAlign = 'center';
       g.fillText(roomLabels[r.id] || r.id, rx + rw / 2, rz + 13);
     });

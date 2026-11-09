@@ -179,49 +179,114 @@ export function buildArchitecture(scene, options = {}) {
     });
   });
 
-  // --- Grand Entrance Hall Inscription Sign ---
-  function createMuseumSign() {
+  // --- Room Portal Signs & Headings (Carved architectural tablets at beginning of each room) ---
+  function createPortalSign(title, subtitle, desc, x, y, z, rotY = 0) {
     const sg = new THREE.Group();
-    sg.position.set(0, 4.35, -5.78);
+    sg.position.set(x, y, z);
+    sg.rotation.y = rotY;
 
-    const tabletMat = new THREE.MeshStandardMaterial({ color: 0x2a241e, roughness: 0.4, metalness: 0.1 });
-    const tablet = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.9, 0.06), tabletMat);
+    // Dark obsidian tablet backing
+    const tabletMat = new THREE.MeshStandardMaterial({ color: 0x181512, roughness: 0.45, metalness: 0.1 });
+    const tablet = new THREE.Mesh(new THREE.BoxGeometry(4.7, 1.0, 0.08), tabletMat);
     tablet.castShadow = true;
     sg.add(tablet);
 
-    const signGold = new THREE.MeshStandardMaterial({ color: 0xb8975a, metalness: 0.8, roughness: 0.3 });
-    const border = new THREE.Mesh(new THREE.BoxGeometry(4.72, 1.02, 0.08), signGold);
-    border.position.z = -0.01;
+    // Turned bronze-gold architectural moulding frame
+    const signGold = new THREE.MeshStandardMaterial({ color: 0xb8975a, metalness: 0.82, roughness: 0.25 });
+    const border = new THREE.Mesh(new THREE.BoxGeometry(4.82, 1.12, 0.10), signGold);
+    border.position.z = -0.012;
     sg.add(border);
 
+    // High-resolution Canvas texture with Aniron font
     const c = document.createElement('canvas'); c.width = 1024; c.height = 256;
     const g = c.getContext('2d');
-    g.fillStyle = '#161310'; g.fillRect(0, 0, 1024, 256);
-    g.strokeStyle = '#c9a84c'; g.lineWidth = 4; g.strokeRect(16, 16, 992, 224);
+    g.fillStyle = '#14120e'; g.fillRect(0, 0, 1024, 256);
+    g.strokeStyle = '#c9a84c'; g.lineWidth = 4; g.strokeRect(14, 14, 996, 228);
+    g.strokeStyle = 'rgba(201, 168, 76, 0.4)'; g.lineWidth = 1.5; g.strokeRect(22, 22, 980, 212);
+
     g.fillStyle = '#f5dfa0'; g.textAlign = 'center';
-    g.font = 'bold 50px Georgia, serif';
-    g.fillText('M U S É E   D E S   B E A U X - A R T S', 512, 95);
-    g.font = 'italic 32px Georgia, serif'; g.fillStyle = '#c9a84c';
-    g.fillText('Collection Permanente · Masterpieces of Art', 512, 160);
-    g.font = '22px Inter, sans-serif'; g.fillStyle = '#8e7d65';
-    g.fillText('VIRTUAL MUSEUM · MCMXXVI', 512, 206);
+    g.font = 'bold 42px Aniron, Georgia, serif';
+    g.fillText(title, 512, 90);
+
+    g.fillStyle = '#c9a84c';
+    g.font = '24px Aniron, Georgia, serif';
+    g.fillText(subtitle, 512, 148);
+
+    if (desc) {
+      g.fillStyle = '#8e7d65';
+      g.font = '19px Aniron, sans-serif';
+      g.fillText(desc, 512, 194);
+    }
 
     const signTex = new THREE.CanvasTexture(c);
     signTex.colorSpace = THREE.SRGBColorSpace;
     const signFace = new THREE.Mesh(
-      new THREE.PlaneGeometry(4.5, 0.8),
-      new THREE.MeshStandardMaterial({ map: signTex, roughness: 0.4, metalness: 0.15 })
+      new THREE.PlaneGeometry(4.6, 0.9),
+      new THREE.MeshStandardMaterial({ map: signTex, roughness: 0.35, metalness: 0.15 })
     );
-    signFace.position.z = 0.032;
+    signFace.position.z = 0.042;
     sg.add(signFace);
 
-    const signLight = new THREE.PointLight(0xfff2dc, 8, 8, 2);
-    signLight.position.set(0, 0, 1.2);
+    // Dedicated warm architectural point light
+    const signLight = new THREE.PointLight(0xfff0d0, 6, 8, 2);
+    signLight.position.set(0, 0, 0.9);
     sg.add(signLight);
 
     scene.add(sg);
   }
-  createMuseumSign();
+
+  // 1. Grand Entrance Hall (Main Entrance above South wall facing spawn, and north portal)
+  createPortalSign(
+    'GRAND ENTRANCE HALL',
+    'Classical Antiquity · Architecture · Leonardo da Vinci',
+    'PERMANENT COLLECTION · WING I',
+    0, 4.35, 5.82, Math.PI
+  );
+
+  // 2. Paintings Gallery (Beginning of Paintings Room at Z = -6.0)
+  createPortalSign(
+    'PAINTINGS GALLERY',
+    'Masterpieces of Light & Form · Renaissance to Surrealism',
+    'VAN GOGH · DA VINCI · VERMEER · DALÍ · HOKUSAI',
+    0, 4.35, -6.12, 0
+  );
+  // Reverse side of Paintings archway (facing back to Grand Entrance Hall)
+  createPortalSign(
+    'GRAND ENTRANCE HALL',
+    'Classical Architecture · Leonardo da Vinci',
+    'PERMANENT COLLECTION · WING I',
+    0, 4.35, -5.88, Math.PI
+  );
+
+  // 3. Music & Instruments Hall (Beginning of Music Room at Z = -20.0)
+  createPortalSign(
+    'MUSIC & INSTRUMENTS HALL',
+    'Ancient Relics · Acoustic Innovations · Master Symphonies',
+    '40,000 BC FLUTES TO BEETHOVEN · WING III',
+    0, 4.35, -20.12, 0
+  );
+  // Reverse side of Music archway (facing back to Paintings Gallery)
+  createPortalSign(
+    'PAINTINGS GALLERY',
+    'Masterpieces of Light & Form',
+    'WING II',
+    0, 4.35, -19.88, Math.PI
+  );
+
+  // 4. History & Science Room (Beginning of History Room at Z = -34.0)
+  createPortalSign(
+    'HISTORY & SCIENCE ROOM',
+    'Human Achievement · Space Exploration · The One Ring',
+    'APOLLO 11 · EIFFEL TOWER · SAURON MASTER RING',
+    0, 4.35, -34.12, 0
+  );
+  // Reverse side of History archway (facing back to Music Hall)
+  createPortalSign(
+    'MUSIC & INSTRUMENTS HALL',
+    'Ancient Relics · Master Symphonies',
+    'WING III',
+    0, 4.35, -33.88, Math.PI
+  );
 
   return { colliders, blockers };
 }
