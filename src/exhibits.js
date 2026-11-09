@@ -397,6 +397,11 @@ function modelPedestal(ex) {
               geom.addGroup(0, 24576, 0);     // Material 0: Ring body (8,192 triangles)
               geom.addGroup(24576, 36864, 1); // Material 1: The Words / Inscription (12,288 triangles)
 
+              const texLoader = new THREE.TextureLoader();
+              const fieryTex = texLoader.load('/assets/models/one-ring/textures/one_ring_inscription_fiery.png');
+              fieryTex.colorSpace = THREE.SRGBColorSpace;
+              fieryTex.wrapS = THREE.RepeatWrapping;
+
               // Polished 24K gold body
               const bodyMat = new THREE.MeshStandardMaterial({
                 color: 0xdfaf37,
@@ -405,11 +410,13 @@ function modelPedestal(ex) {
                 envMapIntensity: 2.2
               });
 
-              // Fiery glowing Tengwar script words
+              // Fiery glowing Tengwar script words with high-res texture map
               const runeMat = new THREE.MeshStandardMaterial({
-                color: 0xff3800,        // Fiery red-orange
+                color: 0xff3b00,        // Fiery red-orange
                 emissive: 0xff4500,     // Glowing fiery Tengwar script
-                emissiveIntensity: 3.5, // Bright incandescent Mordor glow
+                emissiveIntensity: 3.8, // Bright incandescent Mordor glow
+                emissiveMap: fieryTex,
+                map: fieryTex,
                 metalness: 0.2,
                 roughness: 0.25
               });

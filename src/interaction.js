@@ -122,6 +122,11 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
               geom.addGroup(0, 24576, 0);     // Material 0: Ring body
               geom.addGroup(24576, 36864, 1); // Material 1: The Words / Inscription
 
+              const texLoader = new THREE.TextureLoader();
+              const fieryTex = texLoader.load('/assets/models/one-ring/textures/one_ring_inscription_fiery.png');
+              fieryTex.colorSpace = THREE.SRGBColorSpace;
+              fieryTex.wrapS = THREE.RepeatWrapping;
+
               const bodyMat = new THREE.MeshStandardMaterial({
                 color: 0xdfaf37,
                 metalness: 0.95,
@@ -130,9 +135,11 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
               });
 
               const runeMat = new THREE.MeshStandardMaterial({
-                color: 0xff3800,
+                color: 0xff3b00,
                 emissive: 0xff4500,
-                emissiveIntensity: 4.5, // Bright glowing fiery runes in 3D close-up viewer
+                emissiveIntensity: 4.8, // Bright glowing fiery runes in 3D close-up viewer
+                emissiveMap: fieryTex,
+                map: fieryTex,
                 metalness: 0.2,
                 roughness: 0.2
               });
@@ -246,6 +253,9 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
       startModelViewer(ex);
     }
 
+    const inscrWrap = $('#p-inscription-wrap');
+    if (inscrWrap) inscrWrap.style.display = (ex.id === 'one_ring') ? 'block' : 'none';
+
     panel.classList.add('show');
   }
 
@@ -254,6 +264,9 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
     open = false;
     panel.classList.remove('show');
     stopModelViewer();
+
+    const inscrWrap = $('#p-inscription-wrap');
+    if (inscrWrap) inscrWrap.style.display = 'none';
 
     // Pause and reset any modal playback
     const audioEl = $('#p-audio');
