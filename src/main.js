@@ -238,10 +238,12 @@ if (btnDismissRotate) {
   btnDismissRotate.addEventListener('click', handleDismissRotate);
 }
 
-let isEntered = false;
+let lastEnterTime = 0;
 const enterMuseum = () => {
-  if (isEntered) return;
-  isEntered = true;
+  const now = performance.now();
+  if (now - lastEnterTime < 250) return;
+  lastEnterTime = now;
+
   document.body.classList.add('tour-active');
   $('loading')?.classList.add('hide');
   $('start')?.classList.add('hide');
@@ -260,28 +262,23 @@ const enterMuseum = () => {
 const startEl = $('start');
 const startBtn = $('startBtn');
 
-const onStartTap = e => {
-  e?.preventDefault?.();
+const handleEnter = e => {
   e?.stopPropagation?.();
   enterMuseum();
 };
 
 if (startBtn) {
-  startBtn.addEventListener('pointerdown', onStartTap);
-  startBtn.addEventListener('touchstart', onStartTap, { passive: false });
-  startBtn.addEventListener('touchend', onStartTap, { passive: false });
-  startBtn.addEventListener('click', onStartTap);
+  startBtn.addEventListener('click', handleEnter);
+  startBtn.addEventListener('touchstart', handleEnter, { passive: true });
 }
 
 if (startEl) {
-  startEl.addEventListener('pointerdown', e => {
-    if (e.target === startEl || e.target.closest('#startBtn') || e.target.tagName === 'H1' || e.target.classList.contains('sub') || e.target.classList.contains('keys')) {
-      onStartTap(e);
+  startEl.addEventListener('click', handleEnter);
+  startEl.addEventListener('touchstart', e => {
+    if (e.target === startEl || e.target.closest('#startBtn')) {
+      handleEnter(e);
     }
-  });
-  startEl.addEventListener('touchstart', onStartTap, { passive: false });
-  startEl.addEventListener('touchend', onStartTap, { passive: false });
-  startEl.addEventListener('click', onStartTap);
+  }, { passive: true });
 }
 
 player.controls.addEventListener('lock', () => {
