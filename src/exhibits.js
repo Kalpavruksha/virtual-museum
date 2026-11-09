@@ -390,37 +390,49 @@ function modelPedestal(ex) {
           child.castShadow = true;
           child.receiveShadow = true;
           if (isRing) {
-            // Split geometry into bronze-gold ring body and dark engraved lettering
+            // Split geometry into bronze-gold ring rims and dark engraved inscription band
             const geom = child.geometry;
             if (geom && geom.index && geom.index.count >= 61440) {
               geom.clearGroups();
-              geom.addGroup(0, 24576, 0);     // Material 0: Ring body (8,192 triangles)
-              geom.addGroup(24576, 36864, 1); // Material 1: Dark Engraved Lettering (12,288 triangles)
+              geom.addGroup(0, 24576, 0);     // Material 0: Rims (8,192 triangles)
+              geom.addGroup(24576, 36864, 1); // Material 1: Inscription band with dark engraved lettering (12,288 triangles)
 
-              // Beautiful polished bronze-gold ring with realistic metallic reflections
-              const bodyMat = new THREE.MeshStandardMaterial({
-                color: 0xba8c38,        // Rich warm antique bronze-gold
-                emissive: 0x181105,     // Subtle warm bronze baseline
-                metalness: 0.88,        // High metallic luster for realistic reflections
-                roughness: 0.16,        // Smooth polished surface with silky highlights
+              const texLoader = new THREE.TextureLoader();
+              const diffTex = texLoader.load('/assets/models/one-ring/textures/ring_bronze_diffuse.png');
+              diffTex.colorSpace = THREE.SRGBColorSpace;
+              diffTex.wrapS = THREE.RepeatWrapping;
+
+              const bumpTex = texLoader.load('/assets/models/one-ring/textures/ring_engrave_bump.png');
+              bumpTex.wrapS = THREE.RepeatWrapping;
+
+              const roughTex = texLoader.load('/assets/models/one-ring/textures/ring_engrave_roughness.png');
+              roughTex.wrapS = THREE.RepeatWrapping;
+
+              // Polished bronze-gold for rims (seamless match with texture background)
+              const rimMat = new THREE.MeshStandardMaterial({
+                color: 0xc8963e,        // Warm polished antique bronze-gold
+                metalness: 0.90,        // High metallic luster for realistic reflections
+                roughness: 0.16,        // Smooth polished surface
                 envMapIntensity: 2.2
               });
 
-              // Dark engraved lettering carved deep into the bronze-gold metal
-              const runeMat = new THREE.MeshStandardMaterial({
-                color: 0x1f1609,        // Deep dark antique engraved crevice patina
-                metalness: 0.45,        // Subtle metallic depth
-                roughness: 0.60,        // Matte engraved crevice
-                emissive: 0x000000,     // Pure dark carved depth, no glow
-                envMapIntensity: 0.6
+              // Bronze-gold band with dark engraved lettering carved into the surface
+              const bandMat = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                map: diffTex,
+                bumpMap: bumpTex,
+                bumpScale: 0.025,       // Recessed engraved 3D depth
+                roughnessMap: roughTex,
+                metalness: 0.90,
+                roughness: 0.16,
+                envMapIntensity: 2.2
               });
 
-              child.material = [bodyMat, runeMat];
+              child.material = [rimMat, bandMat];
             } else if (child.material) {
-              child.material.metalness = 0.88;
+              child.material.metalness = 0.90;
               child.material.roughness = 0.16;
-              child.material.color.setHex(0xba8c38);
-              child.material.emissive.setHex(0x181105);
+              child.material.color.setHex(0xc8963e);
             }
           }
         }
@@ -443,14 +455,19 @@ function modelPedestal(ex) {
       if (isRing) {
         // Center ring precisely at origin of holder
         m.position.sub(center);
-        // Tilt ring ~30 deg on X and diagonal tilt on Z to angle the fiery runes directly at player's eyes
-        m.rotation.x = 0.52;
-        m.rotation.z = 0.14;
+        // Tilt ring ~24 deg on X and slight tilt on Z to angle the dark engraved lettering toward player
+        m.rotation.x = 0.42;
+        m.rotation.z = 0.08;
 
-        // Aura point light at center of the One Ring
-        const ringGlow = new THREE.PointLight(0xffdf88, 3.5, 2.2, 2);
+        // Interior illumination for inner engraving
+        const ringGlow = new THREE.PointLight(0xffdf88, 2.5, 2.2, 2);
         ringGlow.position.set(0, 0, 0);
-        holder.add(ringGlow);
+
+        // Front-upper fill light illuminating the outer engraving and creating soft specular reflections
+        const frontFill = new THREE.PointLight(0xffeedd, 2.0, 3.0, 2);
+        frontFill.position.set(0, 0.35, 0.55);
+
+        holder.add(ringGlow, frontFill);
       } else {
         // Center on X and Z, place base directly on the pedestal surface
         m.position.set(-center.x, -b2.min.y, -center.z);

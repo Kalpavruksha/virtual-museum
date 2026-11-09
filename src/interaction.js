@@ -137,33 +137,45 @@ export function createInteraction({ camera, targets, blockers, controls, prompt,
             const geom = child.geometry;
             if (geom && geom.index && geom.index.count >= 61440) {
               geom.clearGroups();
-              geom.addGroup(0, 24576, 0);     // Material 0: Ring body (8,192 triangles)
-              geom.addGroup(24576, 36864, 1); // Material 1: Dark Engraved Lettering (12,288 triangles)
+              geom.addGroup(0, 24576, 0);     // Material 0: Rims (8,192 triangles)
+              geom.addGroup(24576, 36864, 1); // Material 1: Inscription band with dark engraved lettering (12,288 triangles)
 
-              // Beautiful polished bronze-gold ring with realistic metallic reflections
-              const bodyMat = new THREE.MeshStandardMaterial({
-                color: 0xba8c38,        // Rich warm antique bronze-gold
-                emissive: 0x181105,     // Subtle warm bronze baseline
+              const texLoader = new THREE.TextureLoader();
+              const diffTex = texLoader.load('/assets/models/one-ring/textures/ring_bronze_diffuse.png');
+              diffTex.colorSpace = THREE.SRGBColorSpace;
+              diffTex.wrapS = THREE.RepeatWrapping;
+
+              const bumpTex = texLoader.load('/assets/models/one-ring/textures/ring_engrave_bump.png');
+              bumpTex.wrapS = THREE.RepeatWrapping;
+
+              const roughTex = texLoader.load('/assets/models/one-ring/textures/ring_engrave_roughness.png');
+              roughTex.wrapS = THREE.RepeatWrapping;
+
+              // Polished bronze-gold for rims (seamless match with texture background)
+              const rimMat = new THREE.MeshStandardMaterial({
+                color: 0xc8963e,        // Warm polished antique bronze-gold
                 metalness: 0.90,        // High metallic luster for realistic reflections
-                roughness: 0.16,        // Smooth polished silky sheen
+                roughness: 0.16,        // Smooth polished surface
                 envMapIntensity: 2.2
               });
 
-              // Dark engraved lettering carved deep into the bronze-gold metal
-              const runeMat = new THREE.MeshStandardMaterial({
-                color: 0x1f1609,        // Deep dark antique engraved crevice patina
-                metalness: 0.45,        // Subtle metallic depth
-                roughness: 0.60,        // Matte engraved crevice
-                emissive: 0x000000,     // Pure dark carved depth, no glow
-                envMapIntensity: 0.6
+              // Bronze-gold band with dark engraved lettering carved into the surface
+              const bandMat = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                map: diffTex,
+                bumpMap: bumpTex,
+                bumpScale: 0.025,       // Recessed engraved 3D depth
+                roughnessMap: roughTex,
+                metalness: 0.90,
+                roughness: 0.16,
+                envMapIntensity: 2.2
               });
 
-              child.material = [bodyMat, runeMat];
+              child.material = [rimMat, bandMat];
             } else if (child.material) {
               child.material.metalness = 0.90;
               child.material.roughness = 0.16;
-              child.material.color.setHex(0xba8c38);
-              child.material.emissive.setHex(0x181105);
+              child.material.color.setHex(0xc8963e);
             }
           }
         }
