@@ -380,8 +380,9 @@ button:hover {
   justify-content: center;
   background: rgba(5,4,3,.85);
   backdrop-filter: blur(10px);
-  z-index: 15;
+  z-index: 600;
   padding: 1.5rem;
+  touch-action: manipulation;
 }
 #panel.show { display: flex; animation: panelFade .28s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes panelFade {
@@ -402,6 +403,8 @@ button:hover {
   padding: 1.6rem 2rem;
   display: flex;
   flex-direction: column;
+  z-index: 605;
+  touch-action: pan-y;
 }
 .card::-webkit-scrollbar, ::-webkit-scrollbar {
   width: 6px;
@@ -421,17 +424,30 @@ button:hover {
 }
 .p-close-x {
   position: absolute;
-  top: 14px;
-  right: 16px;
-  background: transparent;
-  border: none;
+  top: 12px;
+  right: 14px;
+  background: rgba(30, 24, 18, 0.85);
+  border: 1px solid rgba(232, 195, 106, 0.4);
+  border-radius: 4px;
   color: var(--gold);
   font-size: 1.4rem;
-  padding: 4px 8px;
+  min-width: 48px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   line-height: 1;
+  z-index: 620;
+  pointer-events: auto;
+  touch-action: manipulation;
 }
-.p-close-x:hover { color: #fff; background: transparent; box-shadow: none; }
+.p-close-x:hover, .p-close-x:active {
+  color: #fff;
+  background: rgba(55, 42, 26, 0.95);
+  border-color: var(--gold);
+  box-shadow: 0 0 12px rgba(232, 195, 106, 0.6);
+}
 .panel-grid {
   display: grid;
   grid-template-columns: 1fr 1.15fr;
@@ -602,6 +618,15 @@ button:hover {
 .card-actions {
   display: flex;
   gap: 1rem;
+}
+#p-close {
+  min-height: 48px;
+  min-width: 140px;
+  padding: 10px 24px;
+  touch-action: manipulation;
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 620;
 }
 
 /* Quality Preset Selector Pill */
@@ -1360,8 +1385,9 @@ body.is-touch-device #cross {
   justify-content: center;
   background: rgba(6, 5, 4, 0.88);
   backdrop-filter: blur(12px);
-  z-index: 30;
+  z-index: 600;
   padding: 1.5rem;
+  touch-action: manipulation;
 }
 .menu-modal.show {
   display: flex;

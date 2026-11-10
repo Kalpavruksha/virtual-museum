@@ -124,6 +124,7 @@ export function createPlayer(camera, dom, colliders, options = {}) {
 
   // --- Camera Look Zone Handlers ---
   function handleLookStart(touch) {
+    if (isModalOpen) return;
     lookTouchId = touch.identifier;
     lastLookPos = { x: touch.clientX, y: touch.clientY };
     lookStartPos = { x: touch.clientX, y: touch.clientY };
@@ -131,6 +132,7 @@ export function createPlayer(camera, dom, colliders, options = {}) {
   }
 
   function handleLookMove(touch) {
+    if (isModalOpen) return;
     const dx = touch.clientX - lastLookPos.x;
     const dy = touch.clientY - lastLookPos.y;
     lastLookPos = { x: touch.clientX, y: touch.clientY };
@@ -141,6 +143,10 @@ export function createPlayer(camera, dom, colliders, options = {}) {
   }
 
   function handleLookEnd(touch) {
+    if (isModalOpen) {
+      lookTouchId = null;
+      return;
+    }
     const moved = Math.hypot(touch.clientX - lookStartPos.x, touch.clientY - lookStartPos.y);
     const duration = performance.now() - lookStartTime;
 

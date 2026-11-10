@@ -113,7 +113,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: Q.antialias !== false, pow
 renderer.setPixelRatio(Q.pr);
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.9;
+renderer.toneMappingExposure = Q.id === 'low' ? 1.05 : 0.9;
 if (Q.shadows) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -124,7 +124,19 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0c0b0a);
 scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.9;
-scene.add(new THREE.HemisphereLight(0xfff5e6, 0x241c14, 0.32));
+
+// Natural museum hemisphere ambient lighting (soft warm skylight + rich floor bounce)
+const hemiGround = Q.id === 'low' ? 0x6a5c4a : 0x241c14;
+const hemiIntensity = Q.id === 'low' ? 1.6 : 0.32;
+scene.add(new THREE.HemisphereLight(0xfff5e6, hemiGround, hemiIntensity));
+
+// Low/mobile mode replaced ~38 lights with a 6-light pool, so walls and floors need real ambient fill.
+// Tune live with ?amb=3 (try 1.5 to 4). Default is 3.0 for low quality mode.
+const ambParam = parseFloat(new URLSearchParams(location.search).get('amb'));
+const AMB = !isNaN(ambParam) ? ambParam : (Q.id === 'low' ? 3.0 : 0);
+if (AMB > 0) {
+  scene.add(new THREE.AmbientLight(0xfff3e2, AMB));
+}
 
 const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 120);
 camera.position.set(L.spawn.pos[0], 1.6, L.spawn.pos[1]);
@@ -180,9 +192,13 @@ try {
 const { colliders, blockers } = buildArchitecture(scene, Q);
 if (Q.id === 'low') {
   downgradeMaterials(scene);
+  scene.traverse(o => {
+    const m = o.material;
+    if (m?.isMeshLambertMaterial && m.color && !m.map) m.color.multiplyScalar(1.5);
+  });
 }
 
-const lightPool = Q.lightPool ? createLightPool(scene, 4) : null;
+const lightPool = Q.lightPool ? createLightPool(scene, 6) : null;
 
 // Wire Player with mobile tap-to-select support
 let exhibits = null;
@@ -200,7 +216,13 @@ exhibitsPromise.then(built => {
   exhibits = built;
   if (Q.id === 'low') {
     downgradeMaterials(scene);
+    scene.traverse(o => {
+      const m = o.material;
+      if (m?.isMeshLambertMaterial && m.color && !m.map) m.color.multiplyScalar(1.5);
+    });
   }
+  console.log('[Exhibits] Built successfully. spots.length =', built.allExhibitSpots?.length || 0);
+
   interaction = createInteraction({
     camera,
     targets: exhibits.targets,
@@ -210,6 +232,22 @@ exhibitsPromise.then(built => {
     prompt: $('prompt'),
     panel: $('panel')
   });
+
+  // Ensure touch and pointer events on panel are isolated from 3D controls underneath
+  const doCloseInspect = e => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    interaction?.close?.();
+  };
+  $('p-close')?.addEventListener('click', doCloseInspect);
+  $('p-close')?.addEventListener('touchend', doCloseInspect, { passive: false });
+  $('p-x')?.addEventListener('click', doCloseInspect);
+  $('p-x')?.addEventListener('touchend', doCloseInspect, { passive: false });
+
+  ['touchstart', 'touchmove', 'pointerdown'].forEach(ev => {
+    $('panel')?.addEventListener(ev, e => e.stopPropagation(), { passive: true });
+  });
+
   if (document.body.classList.contains('tour-active')) {
     exhibits.startMedia();
   }
@@ -643,7 +681,9 @@ window.__museum = {
   },
   colliders,
   player,
-  interaction
+  interaction,
+  lightPool,
+  getExhibits: () => exhibits
 };
 
 // Step 8: Adaptive resolution in every mode (steps 1.5 -> 0.6), ignoring the first 4s

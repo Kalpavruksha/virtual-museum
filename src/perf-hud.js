@@ -20,3 +20,4 @@ pixelRatio ${renderer.getPixelRatio().toFixed(2)}`;
     frames = 0; cpu = 0; last = now;
   };
 }
+

@@ -339,9 +339,12 @@ export function createInteraction({ camera, targets, blockers, controls, player,
     panel.classList.add('show');
   }
 
+  let lastClose = 0;
+
   function close() {
     if (!open) return;
     open = false;
+    lastClose = performance.now();
     panel.classList.remove('show');
     stopModelViewer();
     player?.setModalOpen?.(false);
@@ -386,7 +389,7 @@ export function createInteraction({ camera, targets, blockers, controls, player,
   }
 
   function tapSelect(clientX, clientY) {
-    if (open) return false;
+    if (open || (performance.now() - lastClose < 400)) return false;
     const mouse = {
       x: (clientX / window.innerWidth) * 2 - 1,
       y: -(clientY / window.innerHeight) * 2 + 1
@@ -431,7 +434,7 @@ export function createInteraction({ camera, targets, blockers, controls, player,
 
   // Clicking an exhibit in focus opens it directly
   window.addEventListener('click', e => {
-    if (open) return;
+    if (open || (performance.now() - lastClose < 400)) return;
     if (e.target.tagName === 'BUTTON' || panel.contains(e.target) || e.target.closest('#mobileControls')) return;
     if (current) {
       show(current.userData.exhibit);
@@ -449,12 +452,30 @@ export function createInteraction({ camera, targets, blockers, controls, player,
     }
   });
 
-  $('#p-close')?.addEventListener('click', close);
-  $('#p-x')?.addEventListener('click', close);
+  const doClose = e => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    close();
+  };
+  ['click', 'touchend', 'pointerup'].forEach(ev => {
+    $('#p-close')?.addEventListener(ev, doClose, { passive: false });
+    $('#p-x')?.addEventListener(ev, doClose, { passive: false });
+  });
 
-  // Clicking backdrop outside the modal card also closes it
-  panel.addEventListener('click', e => {
-    if (e.target === panel) close();
+  // Clicking/tapping backdrop outside the modal card also closes it
+  const doBackdropClose = e => {
+    if (e.target === panel) {
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      close();
+    }
+  };
+  panel.addEventListener('click', doBackdropClose);
+  panel.addEventListener('touchend', doBackdropClose, { passive: false });
+
+  // Stop panel touches from reaching the joystick / look-drag handlers underneath
+  ['touchstart', 'touchmove', 'touchend', 'pointerdown', 'pointerup'].forEach(ev => {
+    panel.addEventListener(ev, e => e.stopPropagation(), { passive: true });
   });
 
   return { update, isOpen: () => open, close, show, interact, tapSelect };
