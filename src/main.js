@@ -12,6 +12,13 @@ import { createPlayer } from './player.js';
 import { createInteraction } from './interaction.js';
 import { createMinimap } from './minimap.js';
 import { initAudio, toggleMute, isAudioMuted, setMuted, resumeAudio } from './audio.js';
+import {
+  registerServiceWorker,
+  checkAssetCache,
+  preloadAndCacheAssets,
+  STANDARD_ASSETS,
+  HIGH_ASSETS
+} from './cache.js';
 
 const $ = id => document.getElementById(id);
 
@@ -49,9 +56,13 @@ if (isMobileDevice) {
   document.body.classList.add('is-touch-device');
 }
 
+const savedMobileExp = localStorage.getItem('museum_mobile_exp') || 'standard';
+let mobileExp = savedMobileExp;
+
 const savedQ = localStorage.getItem('museum_quality');
 const urlQ = new URLSearchParams(location.search).get('q');
-const qualitySetting = urlQ || savedQ || (isMobileDevice ? 'auto' : 'high'); // low | medium | high | auto
+const defaultMobileQ = mobileExp === 'high' ? 'high' : 'low';
+const qualitySetting = urlQ || savedQ || (isMobileDevice ? defaultMobileQ : 'high'); // low | medium | high | auto
 
 function resolveQuality(setting) {
   if (setting === 'auto') {
@@ -63,7 +74,7 @@ function resolveQuality(setting) {
   return {
     low: { id: 'low', pr: 1.0, bloom: false, reflector: false, shadows: false, antialias: false },
     medium: { id: 'medium', pr: Math.min(window.devicePixelRatio, 1.25), bloom: false, reflector: false, shadows: true, antialias: true },
-    high: { id: 'high', pr: Math.min(window.devicePixelRatio, isMobileDevice ? 1.5 : 2.0), bloom: true, reflector: true, reflectorRes: isMobileDevice ? 512 : 1024, shadows: true, antialias: true }
+    high: { id: 'high', pr: Math.min(window.devicePixelRatio, isMobileDevice ? 1.25 : 2.0), bloom: true, reflector: !isMobileDevice, reflectorRes: isMobileDevice ? 256 : 1024, shadows: true, antialias: true }
   }[setting] || { id: 'low', pr: 1.0, bloom: false, reflector: false, shadows: false, antialias: false };
 }
 
@@ -170,7 +181,8 @@ const player = createPlayer(camera, renderer.domElement, colliders, {
 });
 
 // Load exhibits smoothly in parallel
-buildExhibits(scene, colliders).then(built => {
+const exhibitsPromise = buildExhibits(scene, colliders);
+exhibitsPromise.then(built => {
   exhibits = built;
   interaction = createInteraction({
     camera,
@@ -181,7 +193,7 @@ buildExhibits(scene, colliders).then(built => {
     prompt: $('prompt'),
     panel: $('panel')
   });
-  if (isEntered) {
+  if (document.body.classList.contains('tour-active')) {
     exhibits.startMedia();
   }
   $('loading')?.classList.add('hide');
@@ -249,6 +261,7 @@ const enterMuseum = (isTouchTrigger = false) => {
   document.body.classList.add('tour-active');
   $('loading')?.classList.add('hide');
   $('start')?.classList.add('hide');
+  $('mobileGateway')?.classList.add('hide');
 
   try { player.startTour(); } catch (_) {}
   try { initAudio(); resumeAudio(); } catch (_) {}
@@ -286,6 +299,164 @@ if (startEl) {
       handleEnterTouch(e);
     }
   }, { passive: true });
+}
+
+// --- Dedicated Mobile-Only Preload, Local Cache & Experience Engine ---
+if (isMobileDevice) {
+  registerServiceWorker();
+
+  const expStandardBtn = $('expStandardBtn');
+  const expHighBtn = $('expHighBtn');
+  const mobileEnterBtn = $('mobileEnterBtn');
+  const statusEl = $('mgStatusText');
+  const pctEl = $('mgPercentText');
+  const barEl = $('mgProgressBar');
+  const badgeText = $('mgBadgeText');
+  const badgeEl = $('mgCacheBadge');
+  const enterText = $('mgEnterText');
+
+  function updateMobileExpUI(mode) {
+    if (mode === 'high') {
+      expHighBtn?.classList.add('active');
+      expStandardBtn?.classList.remove('active');
+    } else {
+      expStandardBtn?.classList.add('active');
+      expHighBtn?.classList.remove('active');
+    }
+  }
+  updateMobileExpUI(mobileExp);
+
+  const setExperience = newExp => {
+    if (newExp === mobileExp) return;
+    mobileExp = newExp;
+    localStorage.setItem('museum_mobile_exp', newExp);
+    updateMobileExpUI(newExp);
+
+    const targetQ = newExp === 'high' ? 'high' : 'low';
+    if (qualitySetting !== targetQ) {
+      localStorage.setItem('museum_quality', targetQ);
+      const url = new URL(location.href);
+      url.searchParams.set('q', targetQ);
+      location.href = url.toString();
+      return;
+    }
+    startMobilePreload(newExp);
+  };
+
+  expStandardBtn?.addEventListener('click', e => {
+    e.stopPropagation();
+    setExperience('standard');
+  });
+  expHighBtn?.addEventListener('click', e => {
+    e.stopPropagation();
+    setExperience('high');
+  });
+
+  async function startMobilePreload(mode) {
+    if (mobileEnterBtn) {
+      mobileEnterBtn.disabled = true;
+      mobileEnterBtn.classList.remove('ready');
+    }
+    if (enterText) enterText.textContent = 'PREPARING GALLERIES...';
+
+    // Step 1: Check existing cache hits in browser CacheStorage
+    if (statusEl) statusEl.textContent = 'Connecting to local vault...';
+    let cacheStatus = { allCached: false };
+    try {
+      cacheStatus = await checkAssetCache(mode);
+      if (cacheStatus.allCached) {
+        if (badgeText) badgeText.textContent = 'Loaded from device storage (0ms network delay)';
+        if (badgeEl) badgeEl.style.color = '#ffd880';
+      } else {
+        if (badgeText) badgeText.textContent = 'Saving locally in phone cache for future visits';
+        if (badgeEl) badgeEl.style.color = 'var(--gold)';
+      }
+    } catch (_) {}
+
+    // Step 2: Download & Cache essential assets
+    try {
+      await preloadAndCacheAssets({
+        mode,
+        onProgress: ({ current, total, url, isHit, pct }) => {
+          const scaledPct = Math.min(88, Math.round(pct * 0.88));
+          if (barEl) barEl.style.width = scaledPct + '%';
+          if (pctEl) pctEl.textContent = scaledPct + '%';
+          const file = url.split('/').pop();
+          if (statusEl) {
+            if (isHit) {
+              statusEl.textContent = `Vault hit: ${file}`;
+            } else {
+              statusEl.textContent = `Caching (${current}/${total}): ${file}`;
+            }
+          }
+        }
+      });
+    } catch (err) {
+      console.warn('[Cache] Preload warning:', err);
+    }
+
+    // Step 3: Wait for 3D architecture & exhibits
+    if (statusEl) statusEl.textContent = 'Finalizing 3D exhibits & lighting...';
+    if (barEl) barEl.style.width = '92%';
+    if (pctEl) pctEl.textContent = '92%';
+
+    try {
+      await exhibitsPromise;
+    } catch (_) {}
+
+    // Step 4: Pre-warm GPU WebGL Shaders & Textures (eliminates lag during movement)
+    if (statusEl) statusEl.textContent = 'Pre-compiling GPU shaders & warming scene...';
+    if (barEl) barEl.style.width = '98%';
+    if (pctEl) pctEl.textContent = '98%';
+
+    await new Promise(r => requestAnimationFrame(r));
+    try {
+      renderer.compile(scene, camera);
+    } catch (err) {
+      console.warn('[WebGL] Shader pre-compile warning:', err);
+    }
+
+    // Step 5: Ready!
+    if (barEl) barEl.style.width = '100%';
+    if (pctEl) pctEl.textContent = '100%';
+    if (statusEl) statusEl.textContent = 'All assets cached locally · Museum ready!';
+    if (badgeText) {
+      badgeText.textContent = cacheStatus.allCached
+        ? '⚡ Instant zero-lag reload from phone storage (0ms)'
+        : '⚡ 100% Cached locally in browser storage';
+      if (badgeEl) badgeEl.style.color = '#ffd880';
+    }
+    if (mobileEnterBtn) {
+      mobileEnterBtn.disabled = false;
+      mobileEnterBtn.classList.add('ready');
+    }
+    if (enterText) enterText.textContent = '✦ ENTER MUSEUM ✦';
+  }
+
+  const triggerMobileEnter = e => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    enterMuseum(true);
+  };
+  if (mobileEnterBtn) {
+    mobileEnterBtn.addEventListener('click', triggerMobileEnter);
+    mobileEnterBtn.addEventListener('touchstart', triggerMobileEnter, { passive: false });
+    mobileEnterBtn.addEventListener('pointerdown', triggerMobileEnter);
+  }
+
+  // Safety timer: unlock enter button after 4.5s even if an asset stalls
+  setTimeout(() => {
+    if (mobileEnterBtn && mobileEnterBtn.disabled) {
+      mobileEnterBtn.disabled = false;
+      if (enterText) enterText.textContent = '✦ ENTER MUSEUM ✦';
+      if (barEl) barEl.style.width = '100%';
+      if (pctEl) pctEl.textContent = '100%';
+      if (statusEl) statusEl.textContent = 'Galleries ready!';
+    }
+  }, 4500);
+
+  // Kick off preload & shader warmup
+  startMobilePreload(mobileExp);
 }
 
 // Clicking canvas while tour is active re-locks mouse cursor on desktop

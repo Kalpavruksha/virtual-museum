@@ -698,6 +698,317 @@ html.rotate-dismissed .rotate-overlay {
   background: rgba(184, 151, 90, 0.15);
 }
 
+/* --- Dedicated Mobile Loading, Local Cache & Experience Gateway --- */
+.mobile-gateway {
+  display: none !important;
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  background: radial-gradient(circle at center, rgba(22, 17, 13, 0.98) 0%, rgba(8, 6, 5, 0.99) 100%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Strictly display ONLY on mobile devices when tour is NOT active */
+html.mobile-device:not(.tour-active) .mobile-gateway,
+body.is-touch-device:not(.tour-active) .mobile-gateway {
+  display: flex !important;
+}
+
+/* When tour is active, hide mobile gateway */
+body.tour-active .mobile-gateway {
+  display: none !important;
+}
+
+/* On mobile devices, hide default desktop #start and #loading screens */
+html.mobile-device #start,
+body.is-touch-device #start {
+  display: none !important;
+}
+html.mobile-device #loading,
+body.is-touch-device #loading {
+  display: none !important;
+}
+
+.mg-card {
+  max-width: 560px;
+  width: 92vw;
+  max-height: 94vh;
+  overflow-y: auto;
+  background: rgba(18, 15, 12, 0.96);
+  border: 1.5px solid var(--gold);
+  box-shadow: 0 0 35px var(--gold-glow), 0 20px 60px rgba(0, 0, 0, 0.92);
+  border-radius: 8px;
+  padding: 1.6rem 1.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  text-align: center;
+}
+
+.mg-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.mg-badge {
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+  color: var(--gold);
+  border: 1px solid rgba(184, 151, 90, 0.4);
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(184, 151, 90, 0.12);
+  text-transform: uppercase;
+}
+
+.mg-title {
+  margin: 0;
+  font-size: clamp(1.35rem, 4.5vw, 1.8rem);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--gold2);
+  text-shadow: 0 0 14px rgba(232, 195, 106, 0.55);
+}
+
+.mg-sub {
+  font-size: 0.8rem;
+  color: #c4baa4;
+  letter-spacing: 0.08em;
+}
+
+/* Experience Cards Grid */
+.mg-exp-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 0.2rem;
+}
+
+@media (max-width: 480px) and (orientation: portrait) {
+  .mg-exp-selector {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mg-exp-card {
+  background: rgba(14, 11, 9, 0.85);
+  border: 1.5px solid rgba(184, 151, 90, 0.35);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #ded6c2;
+  position: relative;
+}
+
+.mg-exp-card:hover, .mg-exp-card:active {
+  background: rgba(26, 20, 14, 0.95);
+  border-color: var(--gold);
+}
+
+.mg-exp-card.active {
+  background: linear-gradient(135deg, rgba(232, 195, 106, 0.22) 0%, rgba(28, 22, 15, 0.95) 100%);
+  border-color: #ffd880;
+  box-shadow: 0 0 18px rgba(232, 195, 106, 0.4), inset 0 0 12px rgba(232, 195, 106, 0.15);
+}
+
+.mg-exp-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mg-exp-icon {
+  font-size: 1.1rem;
+}
+
+.mg-exp-name {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--gold2);
+}
+
+.mg-exp-rec-tag {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #0b0a09;
+  background: var(--gold);
+  padding: 2px 6px;
+  border-radius: 8px;
+  margin-left: auto;
+}
+
+.mg-exp-desc {
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: #b5aa94;
+}
+
+.mg-exp-card.active .mg-exp-desc {
+  color: #e2dac9;
+}
+
+/* Progress Section */
+.mg-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 0.4rem;
+  background: rgba(12, 10, 8, 0.75);
+  border: 1px solid rgba(184, 151, 90, 0.25);
+  border-radius: 6px;
+  padding: 10px 14px;
+}
+
+.mg-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.74rem;
+}
+
+.mg-status {
+  color: #d6ccb8;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 78%;
+}
+
+.mg-pct {
+  color: var(--gold2);
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+}
+
+.mg-progress-track {
+  width: 100%;
+  height: 8px;
+  background: rgba(28, 24, 18, 0.95);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(184, 151, 90, 0.3);
+  position: relative;
+}
+
+.mg-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #b8975a 0%, #e8c36a 70%, #ffd880 100%);
+  border-radius: 4px;
+  position: relative;
+  transition: width 0.15s ease-out;
+  box-shadow: 0 0 10px rgba(232, 195, 106, 0.65);
+}
+
+.mg-progress-glow {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 16px;
+  background: #ffffff;
+  opacity: 0.8;
+  filter: blur(3px);
+}
+
+.mg-cache-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  color: var(--gold);
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+.mg-badge-icon {
+  color: #ffd880;
+}
+
+/* Enter Museum Button */
+.mg-enter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 24px;
+  border-radius: 4px;
+  font: 700 0.88rem 'Aniron', Georgia, serif;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-top: 0.3rem;
+  background: rgba(28, 22, 16, 0.7);
+  color: #8c8068;
+  border: 1.5px solid rgba(184, 151, 90, 0.3);
+}
+
+.mg-enter-btn:not(:disabled) {
+  background: linear-gradient(135deg, #e8c36a 0%, #b8975a 100%);
+  color: #0b0a09;
+  border-color: #ffd880;
+  box-shadow: 0 0 24px var(--gold-glow);
+  animation: mgPulse 1.6s infinite alternate ease-in-out;
+  cursor: pointer;
+}
+
+.mg-enter-btn:not(:disabled):active {
+  transform: scale(0.97);
+  box-shadow: 0 0 32px rgba(232, 195, 106, 0.9);
+}
+
+@keyframes mgPulse {
+  0% { box-shadow: 0 0 16px rgba(232, 195, 106, 0.45); }
+  100% { box-shadow: 0 0 30px rgba(232, 195, 106, 0.85); }
+}
+
+@media (max-width: 1024px) and (orientation: landscape), (max-height: 520px) {
+  .mg-card {
+    padding: 1rem 1.4rem;
+    gap: 0.6rem;
+  }
+  .mg-title {
+    font-size: 1.25rem;
+  }
+  .mg-sub {
+    font-size: 0.72rem;
+  }
+  .mg-exp-card {
+    padding: 8px 10px;
+  }
+  .mg-progress-wrap {
+    padding: 6px 10px;
+    gap: 4px;
+  }
+  .mg-enter-btn {
+    padding: 10px 18px;
+    font-size: 0.80rem;
+  }
+}
+
 /* Mobile Controls Container - Hidden by default on desktop, visible ONLY after entering tour on mobile */
 .mobile-controls {
   display: none !important;
@@ -1122,6 +1433,64 @@ body.is-touch-device #cross {
     <button id="btnDismissRotate" class="rotate-dismiss-btn">CONTINUE ANYWAY</button>
   </div>
 </div>
+
+<!-- Dedicated Mobile-Only Preload, Local Cache & Experience Gateway -->
+<div id="mobileGateway" class="mobile-gateway">
+  <div class="mg-card">
+    <div class="mg-header">
+      <div class="mg-badge">Virtual Museum · Mobile Edition</div>
+      <h1 class="mg-title">Royal Galleries</h1>
+      <div class="mg-sub">Select your mobile experience to begin</div>
+    </div>
+
+    <!-- Experience Mode Selector -->
+    <div class="mg-exp-selector">
+      <!-- Standard Experience (Default / Recommended) -->
+      <button id="expStandardBtn" class="mg-exp-card active" data-exp="standard" type="button">
+        <div class="mg-exp-top">
+          <div class="mg-exp-icon">⚡</div>
+          <div class="mg-exp-name">STANDARD EXPERIENCE</div>
+          <div class="mg-exp-rec-tag">RECOMMENDED</div>
+        </div>
+        <div class="mg-exp-desc">Optimized textures & models · Silky-smooth 60 FPS · Battery saver · Rapid load</div>
+      </button>
+
+      <!-- High Quality Experience -->
+      <button id="expHighBtn" class="mg-exp-card" data-exp="high" type="button">
+        <div class="mg-exp-top">
+          <div class="mg-exp-icon">✨</div>
+          <div class="mg-exp-name">HIGH QUALITY EXPERIENCE</div>
+        </div>
+        <div class="mg-exp-desc">Higher-resolution textures · Soft shadows · Enhanced reflections & bloom (Flagship devices)</div>
+      </button>
+    </div>
+
+    <!-- Live Download & Local Cache Progress -->
+    <div class="mg-progress-wrap">
+      <div class="mg-progress-header">
+        <span id="mgStatusText" class="mg-status">Checking local asset vault...</span>
+        <span id="mgPercentText" class="mg-pct">0%</span>
+      </div>
+      <div class="mg-progress-track">
+        <div id="mgProgressBar" class="mg-progress-fill" style="width: 0%;">
+          <div class="mg-progress-glow"></div>
+        </div>
+      </div>
+      <div id="mgCacheBadge" class="mg-cache-badge">
+        <span class="mg-badge-icon">⚡</span>
+        <span id="mgBadgeText">Preparing local browser cache storage</span>
+      </div>
+    </div>
+
+    <!-- Enter Museum CTA -->
+    <button id="mobileEnterBtn" class="mg-enter-btn" disabled type="button">
+      <span class="mg-enter-icon">✦</span>
+      <span id="mgEnterText">PREPARING GALLERIES...</span>
+      <span class="mg-enter-icon">✦</span>
+    </button>
+  </div>
+</div>
+
 <!-- Mobile Game-Style Controls -->
 <div id="mobileControls" class="mobile-controls">
   <!-- Left Side: Movement Touch Zone & Virtual Joystick -->
