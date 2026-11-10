@@ -15,6 +15,7 @@ const bulbMat = new THREE.MeshBasicMaterial({ color: 0xfff6dc });
 const hiMat = new THREE.LineBasicMaterial({ color: 0xe8c36a });
 
 export const allExhibitSpots = [];
+export const allExhibitAudios = [];
 
 function toWorld(parent, vec) {
   return vec.clone().applyEuler(parent.rotation || new THREE.Euler()).add(parent.position || new THREE.Vector3());
@@ -287,6 +288,7 @@ function audioStation(ex, isLow = false) {
   g.userData = { exhibit: ex, highlight: hi };
 
   const audio = new Audio(ex.src);
+  allExhibitAudios.push(audio);
   audio.loop = true;
   audio.volume = 0;
   audio.preload = 'none';
@@ -603,6 +605,7 @@ function modelPedestal(ex, isLow = false) {
   const audioSrc = ex.audioSrc || (isRing ? '/assets/audio/the_one_ring_violin.mp3' : null);
   if (audioSrc) {
     const ringAudio = new Audio(audioSrc);
+    allExhibitAudios.push(ringAudio);
     ringAudio.loop = true;
     ringAudio.volume = 0;
     ringAudio.preload = 'none';
@@ -664,10 +667,18 @@ export async function buildExhibits(scene, colliders, Q = {}) {
     targets,
     allExhibitSpots,
     startMedia: () => medias.forEach(m => m.start && m.start()),
-    pauseAllMedia: () => medias.forEach(m => m.pause && m.pause()),
+    pauseAllMedia: () => {
+      medias.forEach(m => m.pause && m.pause());
+      allExhibitAudios.forEach(a => {
+        try { if (!a.paused) a.pause(); } catch (_) {}
+      });
+    },
     update: (cam, dt = 0.016, isPaused = false) => {
-      if (isPaused) {
+      if (isPaused || isAudioMuted()) {
         medias.forEach(m => m.pause && m.pause());
+        allExhibitAudios.forEach(a => {
+          try { if (!a.paused) a.pause(); } catch (_) {}
+        });
       } else {
         medias.forEach(m => m.update && m.update(cam.position.distanceTo(m.pos)));
       }

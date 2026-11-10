@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { suspendAudio, resumeAudio, isAudioMuted } from './audio.js';
 
 export function createInteraction({ camera, targets, blockers, controls, player, prompt, panel }) {
   const ray = new THREE.Raycaster();
@@ -306,6 +307,9 @@ export function createInteraction({ camera, targets, blockers, controls, player,
     open = true;
     player?.setModalOpen?.(true);
     controls.unlock();
+    if (ex.type !== 'audio') {
+      suspendAudio();
+    }
 
     $('#p-title').textContent = ex.title;
     $('#p-meta').textContent = `${ex.artist} · ${ex.year}`;
@@ -422,6 +426,10 @@ export function createInteraction({ camera, targets, blockers, controls, player,
     const isTouch = isTouchDevice || document.body.classList.contains('is-touch-device');
     if (!isTouch) {
       controls.lock();
+    } else {
+      if (player?.isActive?.() && !isAudioMuted()) {
+        resumeAudio();
+      }
     }
   }
 

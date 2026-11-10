@@ -40,41 +40,45 @@ export function createMinimap(canvas) {
 
   // Harry Potter Marauder's Map Footsteps Tracking System
   const footsteps = [];
-  let lastStepPos = null;
+  let lastStepCanvasX = null, lastStepCanvasY = null;
   let nextFoot = 'right';
-  const STEP_STRIDE = 0.42;    // Distance between footsteps (metres)
-  const LATERAL_OFFSET = 0.16; // Left/right foot displacement from center path
-  const MAX_STEP_AGE = 4500;   // Footstep trail duration (ms)
+  const STEP_STRIDE_PX = 4.2;   // Stride in canvas px (~0.84 metres)
+  const FOOT_SPREAD_PX = 3.6;   // Lateral spacing between left and right feet in canvas px
+  const MAX_STEP_AGE = 5500;    // Footstep trail duration (ms)
+  const camDir = new THREE.Vector3();
 
-  // Draw authentic Marauder's Map single shoe print
+  // Draw authentic Harry Potter Marauder's Map shoe print (large, bold & vibrant)
   function drawMarauderFootprint(ctx, cx, cz, angle, isLeft, alpha) {
     if (alpha <= 0.02) return;
     ctx.save();
     ctx.translate(cx, cz);
     ctx.rotate(angle);
 
-    const scale = S / 5.0;
-    const ink = `rgba(235, 195, 115, ${alpha})`;
-    const shadow = `rgba(32, 22, 12, ${alpha * 0.9})`;
+    const ink = `rgba(255, 220, 125, ${alpha})`;
+    const rim = `rgba(32, 16, 6, ${Math.min(1, alpha * 1.2)})`;
 
-    const toeShift = isLeft ? -0.35 * scale : 0.35 * scale;
-    const toeTilt = isLeft ? -0.10 : 0.10;
+    const toeShift = isLeft ? -1.0 : 1.0;
+    const toeTilt = isLeft ? -0.14 : 0.14;
 
-    // Sole (ball & toes)
+    // Golden parchment luminous glow for high visibility on dark floors
+    ctx.shadowColor = `rgba(255, 215, 90, ${alpha * 0.75})`;
+    ctx.shadowBlur = 5;
+
+    // Sole (ball of foot & toes) - ~14px long x 9px wide
     ctx.beginPath();
     ctx.fillStyle = ink;
-    ctx.strokeStyle = shadow;
-    ctx.lineWidth = 0.6;
-    ctx.ellipse(toeShift, -3.2 * scale, 1.8 * scale, 2.9 * scale, toeTilt, 0, Math.PI * 2);
+    ctx.strokeStyle = rim;
+    ctx.lineWidth = 1.5;
+    ctx.ellipse(toeShift, -7.2, 4.4, 6.8, toeTilt, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
-    // Heel
+    // Heel - ~8px long x 7px wide
     ctx.beginPath();
     ctx.fillStyle = ink;
-    ctx.strokeStyle = shadow;
-    ctx.lineWidth = 0.6;
-    ctx.ellipse(0, 2.2 * scale, 1.4 * scale, 1.6 * scale, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = rim;
+    ctx.lineWidth = 1.5;
+    ctx.ellipse(0, 5.4, 3.5, 4.2, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
@@ -131,38 +135,43 @@ export function createMinimap(canvas) {
       }
     });
 
-    // Player position & orientation
-    const px = cam.position.x;
-    const pz = cam.position.z;
-    const yaw = cam.rotation.y;
+    // Current player position in canvas pixels
+    const pCanvasX = X(cam.position.x);
+    const pCanvasY = Z(cam.position.z);
     const now = performance.now();
 
     // Track movement and generate Marauder's Map footsteps
-    if (!lastStepPos) {
-      lastStepPos = { x: px, z: pz, time: now };
+    if (lastStepCanvasX === null) {
+      lastStepCanvasX = pCanvasX;
+      lastStepCanvasY = pCanvasY;
     } else {
-      const dist = Math.hypot(px - lastStepPos.x, pz - lastStepPos.z);
-      if (dist >= STEP_STRIDE) {
-        const dx = px - lastStepPos.x;
-        const dz = pz - lastStepPos.z;
-        // Direction angle in 2D map space (X right, Z down/south)
-        const moveAngle = Math.atan2(dx, -dz);
+      const cdx = pCanvasX - lastStepCanvasX;
+      const cdy = pCanvasY - lastStepCanvasY;
+      const dist = Math.hypot(cdx, cdy);
 
-        // Perpendicular lateral offset for left vs right foot
-        const perpAngle = moveAngle + (nextFoot === 'left' ? -Math.PI / 2 : Math.PI / 2);
-        const stepX = px + Math.cos(perpAngle) * LATERAL_OFFSET;
-        const stepZ = pz - Math.sin(perpAngle) * LATERAL_OFFSET;
+      if (dist >= STEP_STRIDE_PX) {
+        // Angle pointing along movement direction on canvas
+        const moveAngle = Math.atan2(cdx, -cdy);
+
+        // Perpendicular offset for alternating left vs right foot
+        const perpX = Math.cos(moveAngle);
+        const perpY = Math.sin(moveAngle);
+        const sideMult = nextFoot === 'left' ? -1 : 1;
+
+        const stepX = pCanvasX + perpX * (FOOT_SPREAD_PX * sideMult);
+        const stepY = pCanvasY + perpY * (FOOT_SPREAD_PX * sideMult);
 
         footsteps.push({
           x: stepX,
-          z: stepZ,
+          y: stepY,
           angle: moveAngle,
           foot: nextFoot,
           time: now
         });
 
         nextFoot = (nextFoot === 'left' ? 'right' : 'left');
-        lastStepPos = { x: px, z: pz, time: now };
+        lastStepCanvasX = pCanvasX;
+        lastStepCanvasY = pCanvasY;
       }
     }
 
@@ -174,51 +183,56 @@ export function createMinimap(canvas) {
     // Render footsteps trail
     for (const step of footsteps) {
       const age = now - step.time;
-      const alpha = Math.max(0, 1 - (age / MAX_STEP_AGE)) * 0.85;
-      drawMarauderFootprint(g, X(step.x), Z(step.z), step.angle, step.foot === 'left', alpha);
+      const alpha = Math.max(0, 1 - (age / MAX_STEP_AGE)) * 0.90;
+      drawMarauderFootprint(g, step.x, step.y, step.angle, step.foot === 'left', alpha);
     }
 
-    // Player current orientation angle on canvas
-    const pCanvasAngle = -yaw;
+    // Camera forward vector in 3D mapped to canvas orientation
+    cam.getWorldDirection(camDir);
+    const playerAngle = Math.atan2(camDir.x, camDir.z);
 
     // Soft forward vision / torch FOV wedge
     g.save();
-    g.translate(X(px), Z(pz));
-    g.rotate(pCanvasAngle);
-    g.fillStyle = 'rgba(232, 195, 106, 0.16)';
+    g.translate(pCanvasX, pCanvasY);
+    g.rotate(playerAngle);
+    g.fillStyle = 'rgba(232, 195, 106, 0.18)';
     g.beginPath();
     g.moveTo(0, 0);
-    g.arc(0, 0, 18, -Math.PI / 2 - 0.40, -Math.PI / 2 + 0.40);
+    g.arc(0, 0, 22, -Math.PI / 2 - 0.42, -Math.PI / 2 + 0.42);
     g.closePath();
     g.fill();
     g.restore();
 
     // Current player standing feet
-    const leftPerp = pCanvasAngle - Math.PI / 2;
-    const rightPerp = pCanvasAngle + Math.PI / 2;
-    const pLeftX = X(px + Math.sin(leftPerp) * 0.15);
-    const pLeftZ = Z(pz + Math.cos(leftPerp) * 0.15);
-    const pRightX = X(px + Math.sin(rightPerp) * 0.15);
-    const pRightZ = Z(pz + Math.cos(rightPerp) * 0.15);
+    const perpX = Math.cos(playerAngle);
+    const perpY = Math.sin(playerAngle);
+    const pLeftX = pCanvasX - perpX * FOOT_SPREAD_PX;
+    const pLeftY = pCanvasY - perpY * FOOT_SPREAD_PX;
+    const pRightX = pCanvasX + perpX * FOOT_SPREAD_PX;
+    const pRightY = pCanvasY + perpY * FOOT_SPREAD_PX;
 
-    drawMarauderFootprint(g, pLeftX, pLeftZ, pCanvasAngle, true, 0.95);
-    drawMarauderFootprint(g, pRightX, pRightZ, pCanvasAngle, false, 0.95);
+    drawMarauderFootprint(g, pLeftX, pLeftY, playerAngle, true, 1.0);
+    drawMarauderFootprint(g, pRightX, pRightY, playerAngle, false, 1.0);
 
     // Marauder's Map "Visitor" parchment ribbon tag
-    const tagX = X(px);
-    const tagY = Z(pz) - 12;
-    const tagW = 38, tagH = 11;
+    const tagX = pCanvasX;
+    const tagY = pCanvasY - 18;
+    const tagW = 44, tagH = 13;
 
-    g.fillStyle = 'rgba(16, 12, 8, 0.88)';
-    g.strokeStyle = 'rgba(232, 195, 106, 0.75)';
-    g.lineWidth = 0.8;
+    g.save();
+    g.shadowColor = 'rgba(232, 195, 106, 0.45)';
+    g.shadowBlur = 6;
+    g.fillStyle = 'rgba(16, 12, 8, 0.92)';
+    g.strokeStyle = 'rgba(232, 195, 106, 0.85)';
+    g.lineWidth = 1.0;
     g.beginPath();
     g.roundRect(tagX - tagW / 2, tagY - tagH / 2, tagW, tagH, 3);
     g.fill();
     g.stroke();
+    g.restore();
 
     g.fillStyle = '#ffd880';
-    g.font = '600 7.5px "Aniron", Georgia, serif';
+    g.font = '700 8px "Aniron", Georgia, serif';
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText('Visitor', tagX, tagY);

@@ -1,11 +1,11 @@
-// WebAudio helper: synthesised architectural footsteps, surface acoustics, and quiet gallery tone.
+// WebAudio helper: synthesised architectural footsteps, surface acoustics, and silent gallery background.
 let ctx, master, noiseBuf;
 let isMuted = false;
 let normalVolume = 0.65;
 
 export function initAudio() {
   if (ctx) {
-    resumeAudio();
+    if (!isMuted) resumeAudio();
     return;
   }
   ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -13,28 +13,24 @@ export function initAudio() {
   master.gain.value = isMuted ? 0 : normalVolume;
   master.connect(ctx.destination);
 
-  // Generate 1 second of white noise buffer
+  // Generate 1 second of white noise buffer for realistic dynamic footstep synthesis
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const d = noiseBuf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
 
-  // Gentle, warm gallery room tone (filtered Brownian/pink ambience)
-  const roomSrc = ctx.createBufferSource();
-  roomSrc.buffer = noiseBuf;
-  roomSrc.loop = true;
+  if (isMuted) {
+    suspendAudio();
+  }
+}
 
-  const lowpass = ctx.createBiquadFilter();
-  lowpass.type = 'lowpass';
-  lowpass.frequency.value = 180;
-
-  const roomGain = ctx.createGain();
-  roomGain.gain.value = 0.028;
-
-  roomSrc.connect(lowpass).connect(roomGain).connect(master);
-  roomSrc.start();
+export function suspendAudio() {
+  if (ctx && ctx.state === 'running') {
+    ctx.suspend().catch(() => {});
+  }
 }
 
 export function resumeAudio() {
+  if (isMuted) return;
   if (ctx && ctx.state === 'suspended') {
     ctx.resume().catch(() => {});
   }
@@ -45,9 +41,17 @@ export function setMuted(muted) {
   if (master && ctx) {
     master.gain.setValueAtTime(isMuted ? 0 : normalVolume, ctx.currentTime);
   }
-  // Also mute/unmute any global audio elements
+  if (isMuted) {
+    suspendAudio();
+  } else {
+    resumeAudio();
+  }
+  // Mute/unmute all DOM audio & video elements
   document.querySelectorAll('audio, video').forEach(el => {
     el.muted = isMuted;
+    if (isMuted) {
+      try { el.pause(); } catch (_) {}
+    }
   });
   return isMuted;
 }

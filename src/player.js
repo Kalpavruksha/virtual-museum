@@ -259,7 +259,8 @@ export function createPlayer(camera, dom, colliders, options = {}) {
 
   function isActive() {
     if (isModalOpen) return false;
-    return controls.isLocked || isTourStarted;
+    if (isMobileMode) return isTourStarted;
+    return controls.isLocked;
   }
 
   function update(dt) {

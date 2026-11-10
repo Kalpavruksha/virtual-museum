@@ -11,7 +11,7 @@ import { buildExhibits } from './exhibits.js';
 import { createPlayer } from './player.js';
 import { createInteraction } from './interaction.js';
 import { createMinimap } from './minimap.js';
-import { initAudio, toggleMute, isAudioMuted, setMuted, resumeAudio } from './audio.js';
+import { initAudio, toggleMute, isAudioMuted, setMuted, resumeAudio, suspendAudio } from './audio.js';
 import {
   registerServiceWorker,
   checkAssetCache,
@@ -534,25 +534,31 @@ player.controls.addEventListener('lock', () => {
     startEl.classList.add('hide');
     startEl.style.setProperty('display', 'none', 'important');
   }
-  exhibits?.startMedia?.();
+  if (!isAudioMuted()) {
+    resumeAudio();
+    exhibits?.startMedia?.();
+  }
 });
 
 player.controls.addEventListener('unlock', () => {
-  if (!interaction?.isOpen?.() && !player.isMobile()) {
-    document.body.classList.remove('tour-active');
-    document.documentElement.classList.remove('tour-active');
-    const startEl = $('start');
-    if (startEl) {
-      startEl.classList.remove('hide');
-      startEl.style.display = 'flex';
-      const startTitle = $('startTitle');
-      if (startTitle) startTitle.textContent = 'TOUR PAUSED';
-      const startSub = $('startSub');
-      if (startSub) startSub.textContent = 'Select Graphics Quality or click below to resume';
-      const startBtn = $('startBtn');
-      if (startBtn) startBtn.textContent = '✦ RESUME TOUR ✦';
+  if (!interaction?.isOpen?.()) {
+    if (!player.isMobile()) {
+      document.body.classList.remove('tour-active');
+      document.documentElement.classList.remove('tour-active');
+      const startEl = $('start');
+      if (startEl) {
+        startEl.classList.remove('hide');
+        startEl.style.display = 'flex';
+        const startTitle = $('startTitle');
+        if (startTitle) startTitle.textContent = 'TOUR PAUSED';
+        const startSub = $('startSub');
+        if (startSub) startSub.textContent = 'Select Graphics Quality or click below to resume';
+        const startBtn = $('startBtn');
+        if (startBtn) startBtn.textContent = '✦ RESUME TOUR ✦';
+      }
     }
     exhibits?.pauseAllMedia?.();
+    suspendAudio();
   }
 });
 
@@ -562,10 +568,16 @@ const openMenu = () => {
   if (interaction?.isOpen?.()) interaction.close();
   menuModal?.classList.add('show');
   player.setModalOpen(true);
+  exhibits?.pauseAllMedia?.();
+  suspendAudio();
 };
 const closeMenu = () => {
   menuModal?.classList.remove('show');
   player.setModalOpen(false);
+  if (player.isActive() && !isAudioMuted()) {
+    resumeAudio();
+    exhibits?.startMedia?.();
+  }
 };
 
 // Pressing M on desktop toggles Museum Menu (Wings travel, sound, options)
@@ -664,9 +676,10 @@ if (window.screen?.orientation) {
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     exhibits?.pauseAllMedia?.();
+    suspendAudio();
   } else {
-    resumeAudio();
-    if (player.isActive()) {
+    if (player.isActive() && !isAudioMuted() && !menuModal?.classList.contains('show')) {
+      resumeAudio();
       exhibits?.startMedia?.();
     }
   }
