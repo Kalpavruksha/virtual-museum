@@ -30,6 +30,7 @@ export const SECONDARY_GALLERY_ASSETS = [
   '/assets/images/eiffel.jpg',
   '/assets/images/one_ring.png',
   '/assets/images/one_ring.jpg',
+  '/assets/models/one-ring/textures/2000px-One_Ring_inscription.jpeg',
   '/assets/models/one-ring/textures/one_ring_inscription_gold.png',
   '/assets/models/one-ring/textures/ring_engrave_bump.png',
   '/assets/models/one-ring/textures/ring_engrave_roughness.png'
