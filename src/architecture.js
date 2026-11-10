@@ -5,6 +5,7 @@ import { getMaterial, tileBox, tilePlane } from './materials.js';
 
 export function buildArchitecture(scene, options = {}) {
   const colliders = [], blockers = [], H = L.wallHeight, th = L.wallThickness;
+  const isLow = options.id === 'low' || !!options.lightPool;
   const trim = getMaterial('trim');
   const skyMat = new THREE.MeshBasicMaterial({ color: 0xfff6e4, toneMapped: false });
 
@@ -65,10 +66,12 @@ export function buildArchitecture(scene, options = {}) {
       s.position.set(cx, H - 0.02, zPos);
       scene.add(s);
 
-      // Soft architectural point light
-      const l = new THREE.PointLight(0xfff2dc, 16, 18, 2);
-      l.position.set(cx, H - 0.6, zPos);
-      scene.add(l);
+      // Soft architectural point light (desktop high only; mobile/low uses hemisphere + light pool)
+      if (!isLow) {
+        const l = new THREE.PointLight(0xfff2dc, 16, 18, 2);
+        l.position.set(cx, H - 0.6, zPos);
+        scene.add(l);
+      }
 
       // Ethereal light beam shaft
       const beamGeo = new THREE.CylinderGeometry(w * 0.22, w * 0.3, H - 0.5, 16, 1, true);
@@ -91,7 +94,7 @@ export function buildArchitecture(scene, options = {}) {
         if (p.collide) colliders.push(pieceAABB(L, r, wall, p));
 
         // Baseboard moulding on both faces (full-height wall pieces)
-        if (p.y0 === 0) for (const side of [1, -1]) {
+        if (!isLow && p.y0 === 0) for (const side of [1, -1]) {
           const b = new THREE.Mesh(tileBox(sl, 0.16, 0.05, 1), trim);
           b.position.set(m.position.x + f.n.x * side * (th / 2 + 0.025), 0.08, m.position.z + f.n.z * side * (th / 2 + 0.025));
           b.rotation.y = f.theta;
@@ -101,31 +104,37 @@ export function buildArchitecture(scene, options = {}) {
       }
 
       // Crown moulding along the whole wall, both faces
-      for (const side of [1, -1]) {
-        const c = new THREE.Mesh(tileBox(f.len + th, 0.22, 0.12, 1), trim);
-        c.position.set(f.bx + f.n.x * side * (th / 2 + 0.06), H - 0.11, f.bz + f.n.z * side * (th / 2 + 0.06));
-        c.rotation.y = f.theta;
-        scene.add(c);
+      if (!isLow) {
+        for (const side of [1, -1]) {
+          const c = new THREE.Mesh(tileBox(f.len + th, 0.22, 0.12, 1), trim);
+          c.position.set(f.bx + f.n.x * side * (th / 2 + 0.06), H - 0.11, f.bz + f.n.z * side * (th / 2 + 0.06));
+          c.rotation.y = f.theta;
+          scene.add(c);
+        }
       }
     }
 
     // Pillars / Columns
     for (const [x, z] of r.columns || []) {
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.45, H, 28), getMaterial('marble'));
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.45, H, isLow ? 14 : 28), getMaterial('marble'));
       col.position.set(x, H / 2, z);
-      col.castShadow = true;
-      col.receiveShadow = true;
+      if (!isLow) {
+        col.castShadow = true;
+        col.receiveShadow = true;
+      }
       scene.add(col);
       blockers.push(col);
 
-      const cap = new THREE.Mesh(tileBox(1.1, 0.2, 1.1, 1), trim);
-      cap.position.set(x, H - 0.1, z);
-      scene.add(cap);
+      if (!isLow) {
+        const cap = new THREE.Mesh(tileBox(1.1, 0.2, 1.1, 1), trim);
+        cap.position.set(x, H - 0.1, z);
+        scene.add(cap);
 
-      const base = new THREE.Mesh(tileBox(1.1, 0.25, 1.1, 1), trim);
-      base.position.set(x, 0.125, z);
-      base.receiveShadow = true;
-      scene.add(base);
+        const base = new THREE.Mesh(tileBox(1.1, 0.25, 1.1, 1), trim);
+        base.position.set(x, 0.125, z);
+        base.receiveShadow = true;
+        scene.add(base);
+      }
     }
   });
 
@@ -235,10 +244,12 @@ export function buildArchitecture(scene, options = {}) {
     signFace.position.z = 0.042;
     sg.add(signFace);
 
-    // Dedicated warm architectural point light
-    const signLight = new THREE.PointLight(0xfff0d0, 6, 8, 2);
-    signLight.position.set(0, 0, 0.9);
-    sg.add(signLight);
+    // Dedicated warm architectural point light (desktop high only)
+    if (!isLow) {
+      const signLight = new THREE.PointLight(0xfff0d0, 6, 8, 2);
+      signLight.position.set(0, 0, 0.9);
+      sg.add(signLight);
+    }
 
     scene.add(sg);
   }
@@ -282,19 +293,23 @@ export function buildArchitecture(scene, options = {}) {
     });
 
     // Baseboards for jamb walls
-    for (const side of [1, -1]) {
-      const b = new THREE.Mesh(tileBox(jambW, 0.16, 0.05, 1), trim);
-      b.position.set(jx, 0.08, entranceZ + side * (0.2 + 0.025));
-      b.receiveShadow = true;
-      scene.add(b);
+    if (!isLow) {
+      for (const side of [1, -1]) {
+        const b = new THREE.Mesh(tileBox(jambW, 0.16, 0.05, 1), trim);
+        b.position.set(jx, 0.08, entranceZ + side * (0.2 + 0.025));
+        b.receiveShadow = true;
+        scene.add(b);
+      }
     }
   }
 
   // Crown moulding across the archway lintel, both faces
-  for (const side of [1, -1]) {
-    const c = new THREE.Mesh(tileBox(18.4, 0.22, 0.12, 1), trim);
-    c.position.set(0, H - 0.11, entranceZ + side * (0.2 + 0.06));
-    scene.add(c);
+  if (!isLow) {
+    for (const side of [1, -1]) {
+      const c = new THREE.Mesh(tileBox(18.4, 0.22, 0.12, 1), trim);
+      c.position.set(0, H - 0.11, entranceZ + side * (0.2 + 0.06));
+      scene.add(c);
+    }
   }
 
   // 1. Grand Entrance Hall: Fixed on the front entrance archway directly in front of player as they enter/spawn

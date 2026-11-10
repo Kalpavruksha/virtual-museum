@@ -13,21 +13,13 @@ const fixtureMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 
 const bulbMat = new THREE.MeshBasicMaterial({ color: 0xfff6dc });
 const hiMat = new THREE.LineBasicMaterial({ color: 0xe8c36a });
 
-function spot(parent, from, to, intensity = 28, castShadow = false) {
-  // Soft, warm museum spotlight (3200K gallery pool with 82% feathering)
-  const s = new THREE.SpotLight(0xffeed8, intensity, 12, Math.PI / 5.2, 0.82, 1.8);
-  s.position.copy(from);
-  s.target.position.copy(to);
-  if (castShadow) {
-    s.castShadow = true;
-    s.shadow.mapSize.width = 1024;
-    s.shadow.mapSize.height = 1024;
-    s.shadow.camera.near = 0.5;
-    s.shadow.camera.far = 12;
-    s.shadow.bias = -0.001;
-  }
-  parent.add(s, s.target);
+export const allExhibitSpots = [];
 
+function toWorld(parent, vec) {
+  return vec.clone().applyEuler(parent.rotation || new THREE.Euler()).add(parent.position || new THREE.Vector3());
+}
+
+function spot(parent, from, to, intensity = 28, castShadow = false, isLow = false) {
   // Ceiling track fixture
   const fx = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.16, 12), fixtureMat);
   fx.position.copy(from);
@@ -35,6 +27,29 @@ function spot(parent, from, to, intensity = 28, castShadow = false) {
   const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.038, 8, 8), bulbMat);
   bulb.position.copy(from);
   parent.add(fx, bulb);
+
+  if (isLow) {
+    // In low quality / mobile, collect spots for dynamic 4-spotlight pool
+    allExhibitSpots.push({
+      pos: toWorld(parent, from),
+      target: toWorld(parent, to),
+      intensity
+    });
+  } else {
+    // Dedicated spotlight for desktop high quality
+    const s = new THREE.SpotLight(0xffeed8, intensity, 12, Math.PI / 5.2, 0.82, 1.8);
+    s.position.copy(from);
+    s.target.position.copy(to);
+    if (castShadow) {
+      s.castShadow = true;
+      s.shadow.mapSize.width = 1024;
+      s.shadow.mapSize.height = 1024;
+      s.shadow.camera.near = 0.5;
+      s.shadow.camera.far = 12;
+      s.shadow.bias = -0.001;
+    }
+    parent.add(s, s.target);
+  }
 }
 
 function highlight(w, h, d = 0.12) {
@@ -45,7 +60,7 @@ function highlight(w, h, d = 0.12) {
 
 const box = (x, z, w, d) => ({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 });
 
-async function frameArt(ex) {
+async function frameArt(ex, isLow = false) {
   const r = room(ex.room), [mw, mh] = ex.maxSize;
   const { tex, aspect } = await loadTexture(ex.src, ex.title, mw / mh);
   let w = mw, h = w / aspect;
@@ -58,16 +73,18 @@ async function frameArt(ex) {
   const mat = new THREE.Mesh(new THREE.PlaneGeometry(w + 2 * m, h + 2 * m), matteMat);
   mat.position.z = D / 2 - 0.01;
 
-  const art = new THREE.Mesh(
-    new THREE.PlaneGeometry(w, h),
-    new THREE.MeshStandardMaterial({
-      map: tex,
-      normalMap: getCanvasNormalMap(),
-      normalScale: new THREE.Vector2(0.24, 0.24),
-      roughness: 0.45,
-      metalness: 0.02
-    })
-  );
+  // Unlit MeshBasicMaterial in low/mobile for instant performance and zero lighting overhead
+  const artMat = isLow
+    ? new THREE.MeshBasicMaterial({ map: tex })
+    : new THREE.MeshStandardMaterial({
+        map: tex,
+        normalMap: getCanvasNormalMap(),
+        normalScale: new THREE.Vector2(0.24, 0.24),
+        roughness: 0.45,
+        metalness: 0.02
+      });
+
+  const art = new THREE.Mesh(new THREE.PlaneGeometry(w, h), artMat);
   art.position.z = D / 2;
   g.add(mat, art);
 
@@ -81,45 +98,50 @@ async function frameArt(ex) {
   ]) {
     const b = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, D), goldMat);
     b.position.set(bx, by, D / 2 - 0.005);
-    b.castShadow = true;
+    if (!isLow) b.castShadow = true;
     g.add(b);
   }
 
-  // Tier 2: Raised decorative gold bead moulding
-  const beadFr = fr * 0.38, beadW = W - fr * 0.8, beadH = Hh - fr * 0.8, beadD = D * 1.28;
-  for (const [bw, bh, bx, by] of [
-    [beadW, beadFr, 0, (beadH - beadFr) / 2],
-    [beadW, beadFr, 0, -(beadH - beadFr) / 2],
-    [beadFr, beadH, (beadW - beadFr) / 2, 0],
-    [beadFr, beadH, -(beadW - beadFr) / 2, 0]
-  ]) {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, beadD), goldMat);
-    b.position.set(bx, by, beadD / 2 - 0.003);
-    g.add(b);
-  }
+  // Tiers 2 & 3: Only on desktop high quality to save 128 draw calls in low/mobile
+  if (!isLow) {
+    // Tier 2: Raised decorative gold bead moulding
+    const beadFr = fr * 0.38, beadW = W - fr * 0.8, beadH = Hh - fr * 0.8, beadD = D * 1.28;
+    for (const [bw, bh, bx, by] of [
+      [beadW, beadFr, 0, (beadH - beadFr) / 2],
+      [beadW, beadFr, 0, -(beadH - beadFr) / 2],
+      [beadFr, beadH, (beadW - beadFr) / 2, 0],
+      [beadFr, beadH, -(beadW - beadFr) / 2, 0]
+    ]) {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, beadD), goldMat);
+      b.position.set(bx, by, beadD / 2 - 0.003);
+      g.add(b);
+    }
 
-  // Tier 3: Burnished dark walnut liner between frame and matte
-  const linerFr = 0.018, linerW = W - fr * 1.5, linerH = Hh - fr * 1.5;
-  const linerMat = new THREE.MeshStandardMaterial({ color: 0x1f1712, roughness: 0.65 });
-  for (const [bw, bh, bx, by] of [
-    [linerW, linerFr, 0, (linerH - linerFr) / 2],
-    [linerW, linerFr, 0, -(linerH - linerFr) / 2],
-    [linerFr, linerH, (linerW - linerFr) / 2, 0],
-    [linerFr, linerH, -(linerW - linerFr) / 2, 0]
-  ]) {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, D * 0.88), linerMat);
-    b.position.set(bx, by, D / 2 - 0.005);
-    g.add(b);
+    // Tier 3: Burnished dark walnut liner between frame and matte
+    const linerFr = 0.018, linerW = W - fr * 1.5, linerH = Hh - fr * 1.5;
+    const linerMat = new THREE.MeshStandardMaterial({ color: 0x1f1712, roughness: 0.65 });
+    for (const [bw, bh, bx, by] of [
+      [linerW, linerFr, 0, (linerH - linerFr) / 2],
+      [linerW, linerFr, 0, -(linerH - linerFr) / 2],
+      [linerFr, linerH, (linerW - linerFr) / 2, 0],
+      [linerFr, linerH, -(linerW - linerFr) / 2, 0]
+    ]) {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, D * 0.88), linerMat);
+      b.position.set(bx, by, D / 2 - 0.005);
+      g.add(b);
+    }
   }
 
   const pl = new THREE.Mesh(
     new THREE.PlaneGeometry(0.42, 0.21),
-    new THREE.MeshStandardMaterial({ map: plaqueTexture(ex.title, ex.artist, ex.year), roughness: 0.4 })
+    isLow
+      ? new THREE.MeshBasicMaterial({ map: plaqueTexture(ex.title, ex.artist, ex.year) })
+      : new THREE.MeshStandardMaterial({ map: plaqueTexture(ex.title, ex.artist, ex.year), roughness: 0.4 })
   );
   pl.position.set(W / 2 + 0.38, -0.1, 0.012);
   g.add(pl);
 
-  spot(g, new THREE.Vector3(0, H - 0.3 - y, 2.2), new THREE.Vector3(0, 0, 0), 28, false);
+  spot(g, new THREE.Vector3(0, H - 0.3 - y, 2.2), new THREE.Vector3(0, 0, 0), 28, false, isLow);
 
   const hi = highlight(W + 0.06, Hh + 0.06);
   hi.position.z = D / 2;
@@ -128,7 +150,7 @@ async function frameArt(ex) {
   return { object: g };
 }
 
-function videoScreen(ex) {
+function videoScreen(ex, isLow = false) {
   const r = room(ex.room), [w, h] = ex.size, y = ex.y ?? 2.4, p = placeOnWall(L, r, ex.wall, ex.at, 0.01);
   const g = new THREE.Group();
   g.position.set(p.x, y, p.z);
@@ -161,9 +183,13 @@ function videoScreen(ex) {
   const bezel = new THREE.Mesh(new THREE.BoxGeometry(w + 0.25, h + 0.25, 0.12), fixtureMat);
   bezel.position.z = 0.05;
 
-  const glow = new THREE.PointLight(0xa5c2ff, 7, 10, 2);
-  glow.position.z = 1.5;
-  g.add(bezel, screen, glow);
+  g.add(bezel, screen);
+
+  if (!isLow) {
+    const glow = new THREE.PointLight(0xa5c2ff, 7, 10, 2);
+    glow.position.z = 1.5;
+    g.add(glow);
+  }
 
   const hi = highlight(w + 0.3, h + 0.3, 0.2);
   hi.position.z = 0.06;
@@ -195,56 +221,64 @@ function videoScreen(ex) {
   };
 }
 
-function pedestal(scene, x, z, w, hgt) {
+function pedestal(scene, x, z, w, hgt, isLow = false) {
   const p = new THREE.Mesh(new THREE.BoxGeometry(w, hgt, w), pedMat);
   p.position.set(x, hgt / 2, z);
-  p.castShadow = true;
-  p.receiveShadow = true;
+  if (!isLow) {
+    p.castShadow = true;
+    p.receiveShadow = true;
+  }
   scene.add(p);
 
   // Plinth base moulding
   const plinth = new THREE.Mesh(new THREE.BoxGeometry(w + 0.12, 0.08, w + 0.12), pedMat);
   plinth.position.set(x, 0.04, z);
-  plinth.receiveShadow = true;
+  if (!isLow) plinth.receiveShadow = true;
   scene.add(plinth);
 
-  // Slim polished brass rail around top perimeter
-  const rw = w + 0.02, rh = 0.024, rd = 0.024;
-  for (const [bx, bz, bw, bd] of [
-    [x, z + w / 2, rw, rd],
-    [x, z - w / 2, rw, rd],
-    [x + w / 2, z, rd, rw],
-    [x - w / 2, z, rd, rw]
-  ]) {
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(bw, rh, bd), brassMat);
-    rail.position.set(bx, hgt + rh / 2, bz);
-    scene.add(rail);
+  // Slim polished brass rail around top perimeter (only desktop high)
+  if (!isLow) {
+    const rw = w + 0.02, rh = 0.024, rd = 0.024;
+    for (const [bx, bz, bw, bd] of [
+      [x, z + w / 2, rw, rd],
+      [x, z - w / 2, rw, rd],
+      [x + w / 2, z, rd, rw],
+      [x - w / 2, z, rd, rw]
+    ]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(bw, rh, bd), brassMat);
+      rail.position.set(bx, hgt + rh / 2, bz);
+      scene.add(rail);
+    }
   }
 
   return p;
 }
 
-function audioStation(ex) {
+function audioStation(ex, isLow = false) {
   const [x, z] = ex.pos, g = new THREE.Group();
-  g.add(pedestal(g, x, z, 0.9, 1.0));
+  g.add(pedestal(g, x, z, 0.9, 1.0, isLow));
 
   const top = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.22, 0.28, 0.12, 24),
-    new THREE.MeshStandardMaterial({ color: 0xb8975a, metalness: 0.8, roughness: 0.3, emissive: 0x3a2a08 })
+    new THREE.CylinderGeometry(0.22, 0.28, 0.12, isLow ? 12 : 24),
+    isLow
+      ? new THREE.MeshBasicMaterial({ color: 0xb8975a })
+      : new THREE.MeshStandardMaterial({ color: 0xb8975a, metalness: 0.8, roughness: 0.3, emissive: 0x3a2a08 })
   );
   top.position.set(x, 1.06, z);
-  top.castShadow = true;
+  if (!isLow) top.castShadow = true;
   g.add(top);
 
   const pl = new THREE.Mesh(
     new THREE.PlaneGeometry(0.6, 0.3),
-    new THREE.MeshStandardMaterial({ map: plaqueTexture(ex.title, ex.artist, ex.year) })
+    isLow
+      ? new THREE.MeshBasicMaterial({ map: plaqueTexture(ex.title, ex.artist, ex.year) })
+      : new THREE.MeshStandardMaterial({ map: plaqueTexture(ex.title, ex.artist, ex.year) })
   );
   pl.position.set(x, 0.65, z + 0.452);
   g.add(pl);
 
   // Spotlight with soft contact shadow
-  spot(g, new THREE.Vector3(x, H - 0.3, z + 0.4), new THREE.Vector3(x, 1, z), 36, true);
+  spot(g, new THREE.Vector3(x, H - 0.3, z + 0.4), new THREE.Vector3(x, 1, z), 36, !isLow, isLow);
 
   const hi = highlight(1.0, 1.2, 1.0);
   hi.position.set(x, 0.6, z);
@@ -331,35 +365,44 @@ function proceduralEiffel(height) {
   return g;
 }
 
-function modelPedestal(ex) {
+function modelPedestal(ex, isLow = false) {
   const [x, z] = ex.pos, g = new THREE.Group(), ped = 1.0;
-  g.add(pedestal(g, x, z, 1.2, ped));
+  g.add(pedestal(g, x, z, 1.2, ped, isLow));
 
   const isRing = ex.id === 'one_ring';
   const vitrineH = isRing ? 0.95 : (ex.height + 0.35);
   const glass = new THREE.Mesh(
     new THREE.BoxGeometry(1.12, vitrineH, 1.12),
-    new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.2,
-      roughness: 0.04,
-      metalness: 0.0,
-      transmission: 0.88,
-      thickness: 0.3,
-      ior: 1.52,
-      depthWrite: false
-    })
+    isLow
+      ? new THREE.MeshBasicMaterial({
+          color: 0xddedff,
+          transparent: true,
+          opacity: 0.18,
+          depthWrite: false
+        })
+      : new THREE.MeshPhysicalMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0.2,
+          roughness: 0.04,
+          metalness: 0.0,
+          transmission: 0.88,
+          thickness: 0.3,
+          ior: 1.52,
+          depthWrite: false
+        })
   );
   glass.position.set(x, ped + vitrineH / 2, z);
   g.add(glass);
 
-  // Brass corner clips on the glass vitrine
-  for (const cx of [x - 0.55, x + 0.55]) {
-    for (const cz of [z - 0.55, z + 0.55]) {
-      const clip = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.07, 0.04), brassMat);
-      clip.position.set(cx, ped + vitrineH - 0.035, cz);
-      g.add(clip);
+  if (!isLow) {
+    // Brass corner clips on the glass vitrine (desktop high only)
+    for (const cx of [x - 0.55, x + 0.55]) {
+      for (const cz of [z - 0.55, z + 0.55]) {
+        const clip = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.07, 0.04), brassMat);
+        clip.position.set(cx, ped + vitrineH - 0.035, cz);
+        g.add(clip);
+      }
     }
   }
 
@@ -388,8 +431,10 @@ function modelPedestal(ex) {
       const m = gltf.scene;
       m.traverse(child => {
         if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
+          if (!isLow) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
           if (isRing) {
             // Split geometry into bronze-gold ring rims and dark engraved inscription band
             const geom = child.geometry;
@@ -409,31 +454,41 @@ function modelPedestal(ex) {
               const roughTex = texLoader.load('/assets/models/one-ring/textures/ring_engrave_roughness.png');
               roughTex.wrapS = THREE.RepeatWrapping;
 
-              // Polished bronze-gold for rims (seamless match with texture background)
-              const rimMat = new THREE.MeshStandardMaterial({
-                color: 0xc8963e,        // Warm polished antique bronze-gold
-                metalness: 0.90,        // High metallic luster for realistic reflections
-                roughness: 0.16,        // Smooth polished surface
-                envMapIntensity: 2.2
-              });
+              if (isLow) {
+                const rimMat = new THREE.MeshBasicMaterial({ color: 0xc8963e });
+                const bandMat = new THREE.MeshBasicMaterial({ map: diffTex });
+                child.material = [rimMat, bandMat];
+              } else {
+                // Polished bronze-gold for rims (seamless match with texture background)
+                const rimMat = new THREE.MeshStandardMaterial({
+                  color: 0xc8963e,        // Warm polished antique bronze-gold
+                  metalness: 0.90,        // High metallic luster for realistic reflections
+                  roughness: 0.16,        // Smooth polished surface
+                  envMapIntensity: 2.2
+                });
 
-              // Bronze-gold band with dark engraved lettering carved into the surface
-              const bandMat = new THREE.MeshStandardMaterial({
-                color: 0xffffff,
-                map: diffTex,
-                bumpMap: bumpTex,
-                bumpScale: 0.025,       // Recessed engraved 3D depth
-                roughnessMap: roughTex,
-                metalness: 0.90,
-                roughness: 0.16,
-                envMapIntensity: 2.2
-              });
+                // Bronze-gold band with dark engraved lettering carved into the surface
+                const bandMat = new THREE.MeshStandardMaterial({
+                  color: 0xffffff,
+                  map: diffTex,
+                  bumpMap: bumpTex,
+                  bumpScale: 0.025,       // Recessed engraved 3D depth
+                  roughnessMap: roughTex,
+                  metalness: 0.90,
+                  roughness: 0.16,
+                  envMapIntensity: 2.2
+                });
 
-              child.material = [rimMat, bandMat];
+                child.material = [rimMat, bandMat];
+              }
             } else if (child.material) {
-              child.material.metalness = 0.90;
-              child.material.roughness = 0.16;
-              child.material.color.setHex(0xc8963e);
+              if (isLow) {
+                child.material = new THREE.MeshBasicMaterial({ color: 0xc8963e });
+              } else {
+                child.material.metalness = 0.90;
+                child.material.roughness = 0.16;
+                child.material.color.setHex(0xc8963e);
+              }
             }
           }
         }
@@ -460,15 +515,17 @@ function modelPedestal(ex) {
         m.rotation.x = 0.42;
         m.rotation.z = 0.08;
 
-        // Interior illumination for inner engraving
-        const ringGlow = new THREE.PointLight(0xffdf88, 2.5, 2.2, 2);
-        ringGlow.position.set(0, 0, 0);
+        if (!isLow) {
+          // Interior illumination for inner engraving
+          const ringGlow = new THREE.PointLight(0xffdf88, 2.5, 2.2, 2);
+          ringGlow.position.set(0, 0, 0);
 
-        // Front-upper fill light illuminating the outer engraving and creating soft specular reflections
-        const frontFill = new THREE.PointLight(0xffeedd, 2.0, 3.0, 2);
-        frontFill.position.set(0, 0.35, 0.55);
+          // Front-upper fill light illuminating the outer engraving and creating soft specular reflections
+          const frontFill = new THREE.PointLight(0xffeedd, 2.0, 3.0, 2);
+          frontFill.position.set(0, 0.35, 0.55);
 
-        holder.add(ringGlow, frontFill);
+          holder.add(ringGlow, frontFill);
+        }
       } else {
         // Center on X and Z, place base directly on the pedestal surface
         m.position.set(-center.x, -b2.min.y, -center.z);
@@ -484,14 +541,16 @@ function modelPedestal(ex) {
 
   const pl = new THREE.Mesh(
     new THREE.PlaneGeometry(0.7, 0.35),
-    new THREE.MeshStandardMaterial({ map: plaqueTexture(ex.title, ex.artist, ex.year) })
+    isLow
+      ? new THREE.MeshBasicMaterial({ map: plaqueTexture(ex.title, ex.artist, ex.year) })
+      : new THREE.MeshStandardMaterial({ map: plaqueTexture(ex.title, ex.artist, ex.year) })
   );
   pl.position.set(x, 0.55, z + 0.602);
   g.add(pl);
 
   // Spotlight with soft contact shadow
   const spotTargetY = isRing ? baseY : (ped + ex.height / 2);
-  spot(g, new THREE.Vector3(x, H - 0.3, z + 0.6), new THREE.Vector3(x, spotTargetY, z), isRing ? 75 : 48, true);
+  spot(g, new THREE.Vector3(x, H - 0.3, z + 0.6), new THREE.Vector3(x, spotTargetY, z), isRing ? 75 : 48, !isLow, isLow);
 
   const hiHeight = isRing ? (vitrineH + 0.1) : (ex.height + 0.4);
   const hi = highlight(1.3, ped + hiHeight, 1.3);
@@ -547,10 +606,11 @@ function modelPedestal(ex) {
   return { object: g, collider: box(x, z, 1.2, 1.2), rotator, media };
 }
 
-export async function buildExhibits(scene, colliders) {
+export async function buildExhibits(scene, colliders, Q = {}) {
+  const isLow = Q.id === 'low' || !!Q.lightPool;
   const targets = [], medias = [], rotators = [];
   const makers = { image: frameArt, video: videoScreen, audio: audioStation, model: modelPedestal };
-  const built = await Promise.all(EXHIBITS.map(async ex => makers[ex.type](ex)));
+  const built = await Promise.all(EXHIBITS.map(async ex => makers[ex.type](ex, isLow)));
   for (const b of built) {
     scene.add(b.object);
     targets.push(b.object);
@@ -560,6 +620,7 @@ export async function buildExhibits(scene, colliders) {
   }
   return {
     targets,
+    allExhibitSpots,
     startMedia: () => medias.forEach(m => m.start && m.start()),
     pauseAllMedia: () => medias.forEach(m => m.pause && m.pause()),
     update: (cam, dt = 0.016, isPaused = false) => {

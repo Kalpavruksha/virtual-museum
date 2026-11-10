@@ -240,3 +240,26 @@ export function getCanvasNormalMap() {
   }, 256, 2.2);
   return canvasNormalCache;
 }
+
+/** In low quality / mobile, swaps MeshStandardMaterial for lightweight MeshLambertMaterial */
+export function downgradeMaterials(root) {
+  const cache = new Map();
+  root.traverse(o => {
+    const m = o.material;
+    if (!m?.isMeshStandardMaterial) return;
+    if (!cache.has(m)) {
+      cache.set(m, new THREE.MeshLambertMaterial({
+        color: m.color,
+        map: m.map,
+        emissive: m.emissive,
+        emissiveMap: m.emissiveMap,
+        emissiveIntensity: m.emissiveIntensity,
+        transparent: m.transparent,
+        opacity: m.opacity,
+        side: m.side,
+        alphaMap: m.alphaMap,
+      }));
+    }
+    o.material = cache.get(m);
+  });
+}

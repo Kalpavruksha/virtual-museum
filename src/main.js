@@ -19,6 +19,9 @@ import {
   STANDARD_ASSETS,
   HIGH_ASSETS
 } from './cache.js';
+import { createPerfHud } from './perf-hud.js';
+import { createLightPool } from './light-pool.js';
+import { downgradeMaterials } from './materials.js';
 
 const $ = id => document.getElementById(id);
 
@@ -67,15 +70,15 @@ const qualitySetting = urlQ || savedQ || (isMobileDevice ? defaultMobileQ : 'hig
 function resolveQuality(setting) {
   if (setting === 'auto') {
     if (isMobileDevice) {
-      return { id: 'low', pr: 1.0, bloom: false, reflector: false, shadows: false, antialias: false };
+      return { id: 'low', pr: 1.0, bloom: false, reflector: false, shadows: false, antialias: false, lightPool: true };
     }
-    return { id: 'high', pr: Math.min(window.devicePixelRatio, 1.5), bloom: true, reflector: true, reflectorRes: 512, shadows: true, antialias: true };
+    return { id: 'high', pr: Math.min(window.devicePixelRatio, 1.5), bloom: true, reflector: true, reflectorRes: 512, shadows: true, antialias: true, lightPool: false };
   }
   return {
-    low: { id: 'low', pr: 1.0, bloom: false, reflector: false, shadows: false, antialias: false },
-    medium: { id: 'medium', pr: Math.min(window.devicePixelRatio, 1.25), bloom: false, reflector: false, shadows: true, antialias: true },
-    high: { id: 'high', pr: Math.min(window.devicePixelRatio, isMobileDevice ? 1.25 : 2.0), bloom: true, reflector: !isMobileDevice, reflectorRes: isMobileDevice ? 256 : 1024, shadows: true, antialias: true }
-  }[setting] || { id: 'low', pr: 1.0, bloom: false, reflector: false, shadows: false, antialias: false };
+    low: { id: 'low', pr: 1.0, bloom: false, reflector: false, shadows: false, antialias: false, lightPool: true },
+    medium: { id: 'medium', pr: Math.min(window.devicePixelRatio, isMobileDevice ? 1.0 : 1.25), bloom: false, reflector: false, shadows: !isMobileDevice, antialias: true, lightPool: isMobileDevice },
+    high: { id: 'high', pr: Math.min(window.devicePixelRatio, isMobileDevice ? 1.15 : 2.0), bloom: !isMobileDevice, reflector: !isMobileDevice, reflectorRes: isMobileDevice ? 256 : 1024, shadows: !isMobileDevice, antialias: true, lightPool: isMobileDevice }
+  }[setting] || { id: 'low', pr: 1.0, bloom: false, reflector: false, shadows: false, antialias: false, lightPool: true };
 }
 
 const Q = resolveQuality(qualitySetting);
@@ -166,13 +169,20 @@ if (Q.bloom) {
   composer.addPass(new OutputPass());
 }
 
-// Preload Aniron font before building 3D canvas signage
+// Preload Aniron font before building 3D canvas signage with timeout protection
 try {
-  await document.fonts.load('bold 42px Aniron');
-  await document.fonts.load('24px Aniron');
+  await Promise.race([
+    Promise.all([document.fonts.load('bold 42px Aniron'), document.fonts.load('24px Aniron')]),
+    new Promise(r => setTimeout(r, 1200))
+  ]);
 } catch (_) {}
 
 const { colliders, blockers } = buildArchitecture(scene, Q);
+if (Q.id === 'low') {
+  downgradeMaterials(scene);
+}
+
+const lightPool = Q.lightPool ? createLightPool(scene, 4) : null;
 
 // Wire Player with mobile tap-to-select support
 let exhibits = null;
@@ -185,9 +195,12 @@ const player = createPlayer(camera, renderer.domElement, colliders, {
 });
 
 // Load exhibits smoothly in parallel
-const exhibitsPromise = buildExhibits(scene, colliders);
+const exhibitsPromise = buildExhibits(scene, colliders, Q);
 exhibitsPromise.then(built => {
   exhibits = built;
+  if (Q.id === 'low') {
+    downgradeMaterials(scene);
+  }
   interaction = createInteraction({
     camera,
     targets: exhibits.targets,
@@ -204,6 +217,21 @@ exhibitsPromise.then(built => {
 }).catch(err => {
   console.warn('Exhibits load warning:', err);
   $('loading')?.classList.add('hide');
+});
+
+// Pre-upload textures to GPU one every 40ms during start screen to eliminate navigation stutters
+exhibitsPromise.then(() => {
+  const queue = [];
+  scene.traverse(o => {
+    const t = o.material?.map;
+    if (t && !queue.includes(t)) queue.push(t);
+  });
+  (function next() {
+    const t = queue.shift();
+    if (!t) return;
+    try { renderer.initTexture(t); } catch (_) {}
+    setTimeout(next, 40);
+  })();
 });
 
 const drawMap = createMinimap($('minimap'));
@@ -575,23 +603,23 @@ $('btnFullscreen')?.addEventListener('click', handleFsToggle);
 $('menuFsBtn')?.addEventListener('click', handleFsToggle);
 document.addEventListener('fullscreenchange', updateFsUI);
 
-// --- Responsive Window Resize & Orientation Change ---
+// --- Responsive Window Resize & Orientation Change (Debounced, ignores duplicate sizes) ---
+let rTimer, lastW = 0, lastH = 0;
 function handleResize() {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-  composer?.setSize(innerWidth, innerHeight);
+  clearTimeout(rTimer);
+  rTimer = setTimeout(() => {
+    const w = innerWidth, h = innerHeight;
+    if (w === lastW && h === lastH) return;
+    lastW = w; lastH = h;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+    composer?.setSize(w, h);
+  }, 200);
 }
 addEventListener('resize', handleResize);
-addEventListener('orientationchange', () => {
-  setTimeout(handleResize, 100);
-  setTimeout(handleResize, 300);
-});
 if (window.screen?.orientation) {
-  window.screen.orientation.addEventListener('change', () => {
-    setTimeout(handleResize, 100);
-    setTimeout(handleResize, 300);
-  });
+  window.screen.orientation.addEventListener('change', handleResize);
 }
 
 // --- Background Tab Throttling (battery & thermal savings) ---
@@ -618,39 +646,51 @@ window.__museum = {
   interaction
 };
 
-// Adaptive performance measurement
-let frameCount = 0;
-let lastFpsCheck = performance.now();
-const fpsHistory = [];
+// Step 8: Adaptive resolution in every mode (steps 1.5 -> 0.6), ignoring the first 4s
+const PR_STEPS = [1.5, 1.25, 1.0, 0.85, 0.7, 0.6];
+let prIdx = Math.max(0, PR_STEPS.findIndex(v => v <= Q.pr));
+let aFrames = 0, aLast = performance.now(), aLow = 0;
+const aStart = aLast;
 
-function monitorAdaptivePerformance() {
-  if (qualitySetting !== 'auto') return;
-  frameCount++;
-  const now = performance.now();
-  if (now - lastFpsCheck >= 1000) {
-    const fps = Math.round((frameCount * 1000) / (now - lastFpsCheck));
-    frameCount = 0;
-    lastFpsCheck = now;
-    fpsHistory.push(fps);
-    if (fpsHistory.length > 3) fpsHistory.shift();
-
-    const avgFps = fpsHistory.reduce((a, b) => a + b, 0) / fpsHistory.length;
-    if (avgFps < 28 && renderer.getPixelRatio() > 1.0) {
-      renderer.setPixelRatio(1.0);
-    }
+function adaptive(now) {
+  if (now - aStart < 4000) return; // ignore the first seconds of uploads and compiles
+  aFrames++;
+  if (now - aLast < 1000) return;
+  const fps = (aFrames * 1000) / (now - aLast);
+  aFrames = 0; aLast = now;
+  aLow = fps < 40 ? aLow + 1 : 0;
+  if (aLow >= 2 && prIdx < PR_STEPS.length - 1) {
+    aLow = 0; prIdx++;
+    const pr = Math.min(PR_STEPS[prIdx], devicePixelRatio);
+    renderer.setPixelRatio(pr);
+    composer?.setPixelRatio?.(pr);
   }
 }
 
+const hud = createPerfHud(renderer, scene);
+
+let mapT = 0, intT = 0;
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
+  const t0 = performance.now();
   const dt = Math.min(clock.getDelta(), 0.05);
   const isPaused = !player.isActive();
 
   player.update(dt);
-  interaction?.update?.();
+  if (t0 - intT > 120) {
+    interaction?.update?.();
+    intT = t0;
+  }
   exhibits?.update?.(camera, dt, isPaused);
-  drawMap(camera);
-  monitorAdaptivePerformance();
+  if (lightPool && exhibits) {
+    lightPool.update(camera, exhibits.allExhibitSpots);
+  }
+  if (t0 - mapT > 100) {
+    drawMap(camera);
+    mapT = t0;
+  }
+  adaptive(t0);
 
   composer ? composer.render() : renderer.render(scene, camera);
+  hud(performance.now() - t0);
 });
