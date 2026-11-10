@@ -3,15 +3,24 @@
 
 export const CACHE_NAME = 'virtual-museum-v1';
 
-export const STANDARD_ASSETS = [
-  // Core gallery artwork (16 high-res exhibits)
-  '/assets/images/mona_lisa.jpg',
-  '/assets/images/starry_night.jpg',
+// Room 1 Spawn & Monument Essentials (must be ready to enter)
+export const ESSENTIAL_SPAWN_ASSETS = [
+  '/assets/fonts/Aniron.ttf',
+  '/assets/fonts/AnironBold.ttf',
   '/assets/images/last_supper.jpg',
   '/assets/images/vitruvian_man.jpg',
-  '/assets/images/persistence_of_memory.jpg',
+  '/assets/models/one_ring.glb',
+  '/assets/models/one-ring/textures/ring_bronze_diffuse.png',
+  '/assets/audio/the_one_ring_violin.mp3'
+];
+
+// Remaining gallery wings (cached progressively in background)
+export const SECONDARY_GALLERY_ASSETS = [
+  '/assets/images/mona_lisa.jpg',
+  '/assets/images/starry_night.jpg',
   '/assets/images/pearl_earring.jpg',
   '/assets/images/great_wave.jpg',
+  '/assets/images/persistence_of_memory.jpg',
   '/assets/images/beethoven_portrait.jpg',
   '/assets/images/dizi_flute.jpg',
   '/assets/images/neanderthal_flute.jpg',
@@ -21,18 +30,14 @@ export const STANDARD_ASSETS = [
   '/assets/images/eiffel.jpg',
   '/assets/images/one_ring.png',
   '/assets/images/one_ring.jpg',
-
-  // The One Ring 3D Model & PBR Engraved Textures
-  '/assets/models/one_ring.glb',
-  '/assets/models/one-ring/textures/ring_bronze_diffuse.png',
   '/assets/models/one-ring/textures/one_ring_inscription_gold.png',
   '/assets/models/one-ring/textures/ring_engrave_bump.png',
-  '/assets/models/one-ring/textures/ring_engrave_roughness.png',
+  '/assets/models/one-ring/textures/ring_engrave_roughness.png'
+];
 
-  // Lord of the Rings Typography & Audio Theme
-  '/assets/fonts/Aniron.ttf',
-  '/assets/fonts/AnironBold.ttf',
-  '/assets/audio/the_one_ring_violin.mp3'
+export const STANDARD_ASSETS = [
+  ...ESSENTIAL_SPAWN_ASSETS,
+  ...SECONDARY_GALLERY_ASSETS
 ];
 
 export const HIGH_ASSETS = [
@@ -55,14 +60,28 @@ export async function registerServiceWorker() {
 }
 
 /**
- * Quickly inspect local browser cache to check if assets are already saved locally
+ * Quick fetch wrapper with abort timeout to avoid any network hanging
+ */
+async function fetchWithTimeout(url, timeoutMs = 2500) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+/**
+ * Inspect local browser cache to check if assets are already saved locally
  */
 export async function checkAssetCache(mode = 'standard') {
   if (typeof window === 'undefined' || !('caches' in window)) {
     return { total: 0, hits: 0, allCached: false, supported: false };
   }
 
-  const list = mode === 'high' ? HIGH_ASSETS : STANDARD_ASSETS;
+  const list = ESSENTIAL_SPAWN_ASSETS;
   try {
     const cache = await caches.open(CACHE_NAME);
     let hits = 0;
@@ -83,12 +102,14 @@ export async function checkAssetCache(mode = 'standard') {
 }
 
 /**
- * Preloads all essential assets and caches them permanently in browser CacheStorage
- * Concurrency limited to 4 parallel workers for optimal mobile performance
+ * Preloads essential spawn assets first for instant entry (1-2s max),
+ * then cascades to remaining gallery wings in background
  */
 export async function preloadAndCacheAssets({ mode = 'standard', onProgress } = {}) {
-  const list = mode === 'high' ? HIGH_ASSETS : STANDARD_ASSETS;
-  const total = list.length;
+  const primaryList = ESSENTIAL_SPAWN_ASSETS;
+  const secondaryList = mode === 'high' ? [...SECONDARY_GALLERY_ASSETS, '/assets/models/eiffel.glb'] : SECONDARY_GALLERY_ASSETS;
+  const primaryTotal = primaryList.length;
+
   let current = 0;
   let hits = 0;
   let fetched = 0;
@@ -101,15 +122,15 @@ export async function preloadAndCacheAssets({ mode = 'standard', onProgress } = 
     } catch (_) {}
   }
 
-  const notify = (url, isHit, phase) => {
+  const notify = (url, isHit, phase, isBackground = false) => {
     current++;
     if (isHit) hits++;
     else fetched++;
-    const pct = Math.min(100, Math.round((current / total) * 100));
-    if (typeof onProgress === 'function') {
+    if (!isBackground && typeof onProgress === 'function') {
+      const pct = Math.min(100, Math.round((current / primaryTotal) * 100));
       onProgress({
         current,
-        total,
+        total: primaryTotal,
         url,
         isHit,
         hitCount: hits,
@@ -120,50 +141,59 @@ export async function preloadAndCacheAssets({ mode = 'standard', onProgress } = 
     }
   };
 
-  // Helper for downloading a single asset
-  async function processAsset(url) {
+  async function processAsset(url, isBackground = false) {
     if (cache) {
       try {
         const cachedMatch = await cache.match(url);
         if (cachedMatch) {
-          notify(url, true, 'cache-hit');
+          notify(url, true, 'cache-hit', isBackground);
           return;
         }
       } catch (_) {}
     }
 
-    // Network fetch
+    // Network fetch with 2.5s maximum timeout
     try {
-      const res = await fetch(url);
-      if (res.ok && cache) {
+      const res = await fetchWithTimeout(url, 2500);
+      if (res && res.ok && cache) {
         try {
           await cache.put(url, res.clone());
         } catch (_) {}
       }
-      notify(url, false, 'network-fetch');
+      notify(url, false, 'network-fetch', isBackground);
     } catch (err) {
-      console.warn('[Cache] Asset preload failed:', url, err);
-      notify(url, false, 'error');
+      notify(url, false, 'error', isBackground);
     }
   }
 
-  // Pool execution: concurrency of 4
+  // Phase 1: Preload Essential Spawn Assets with concurrency of 4
   const pool = 4;
   let idx = 0;
-  const workers = Array.from({ length: Math.min(pool, total) }, async () => {
-    while (idx < list.length) {
-      const targetUrl = list[idx++];
-      await processAsset(targetUrl);
+  const primaryWorkers = Array.from({ length: Math.min(pool, primaryTotal) }, async () => {
+    while (idx < primaryList.length) {
+      const targetUrl = primaryList[idx++];
+      await processAsset(targetUrl, false);
     }
   });
 
-  await Promise.all(workers);
+  await Promise.all(primaryWorkers);
+
+  // Phase 2: Kick off remaining gallery wing assets in background (non-blocking)
+  setTimeout(() => {
+    let secIdx = 0;
+    Array.from({ length: 3 }, async () => {
+      while (secIdx < secondaryList.length) {
+        const targetUrl = secondaryList[secIdx++];
+        await processAsset(targetUrl, true);
+      }
+    });
+  }, 100);
 
   return {
-    total,
+    total: primaryTotal,
     hits,
     fetched,
-    allCached: hits === total
+    allCached: hits === primaryTotal
   };
 }
 

@@ -86,6 +86,10 @@ function updateQualityUI(currentQ) {
     if (btn.dataset.q === currentQ) btn.classList.add('active');
     else btn.classList.remove('active');
   });
+  const startCurrentQBadge = $('startCurrentQBadge');
+  if (startCurrentQBadge) {
+    startCurrentQBadge.textContent = (currentQ || 'AUTO').toUpperCase();
+  }
 }
 updateQualityUI(qualitySetting);
 
@@ -93,7 +97,7 @@ document.querySelectorAll('.q-btn').forEach(btn => {
   btn.addEventListener('click', e => {
     e.stopPropagation();
     const newQ = btn.dataset.q;
-    if (newQ !== qualitySetting) {
+    if (newQ && newQ !== qualitySetting) {
       localStorage.setItem('museum_quality', newQ);
       const url = new URL(location.href);
       url.searchParams.set('q', newQ);
@@ -259,9 +263,24 @@ const enterMuseum = (isTouchTrigger = false) => {
   lastEnterTime = now;
 
   document.body.classList.add('tour-active');
-  $('loading')?.classList.add('hide');
-  $('start')?.classList.add('hide');
-  $('mobileGateway')?.classList.add('hide');
+  document.documentElement.classList.add('tour-active');
+
+  const mg = $('mobileGateway');
+  if (mg) {
+    mg.classList.add('hide');
+    mg.style.setProperty('display', 'none', 'important');
+    mg.style.setProperty('pointer-events', 'none', 'important');
+  }
+  const st = $('start');
+  if (st) {
+    st.classList.add('hide');
+    st.style.setProperty('display', 'none', 'important');
+  }
+  const ld = $('loading');
+  if (ld) {
+    ld.classList.add('hide');
+    ld.style.setProperty('display', 'none', 'important');
+  }
 
   try { player.startTour(); } catch (_) {}
   try { initAudio(); resumeAudio(); } catch (_) {}
@@ -289,16 +308,11 @@ const handleEnterTouch = e => {
 
 if (startBtn) {
   startBtn.addEventListener('click', handleEnterClick);
-  startBtn.addEventListener('touchstart', handleEnterTouch, { passive: true });
+  startBtn.addEventListener('touchend', handleEnterTouch);
 }
 
 if (startEl) {
   startEl.addEventListener('click', handleEnterClick);
-  startEl.addEventListener('touchstart', e => {
-    if (e.target === startEl || e.target.closest('#startBtn')) {
-      handleEnterTouch(e);
-    }
-  }, { passive: true });
 }
 
 // --- Dedicated Mobile-Only Preload, Local Cache & Experience Engine ---
@@ -365,65 +379,39 @@ if (isMobileDevice) {
     try {
       cacheStatus = await checkAssetCache(mode);
       if (cacheStatus.allCached) {
-        if (badgeText) badgeText.textContent = 'Loaded from device storage (0ms network delay)';
+        if (badgeText) badgeText.textContent = '⚡ Loaded from phone storage (0ms delay)';
         if (badgeEl) badgeEl.style.color = '#ffd880';
       } else {
-        if (badgeText) badgeText.textContent = 'Saving locally in phone cache for future visits';
+        if (badgeText) badgeText.textContent = '⚡ Saving locally in phone cache for future visits';
         if (badgeEl) badgeEl.style.color = 'var(--gold)';
       }
     } catch (_) {}
 
-    // Step 2: Download & Cache essential assets
+    // Step 2: Download & Cache essential assets (fast preload with 2.5s per-asset timeout)
     try {
       await preloadAndCacheAssets({
         mode,
         onProgress: ({ current, total, url, isHit, pct }) => {
-          const scaledPct = Math.min(88, Math.round(pct * 0.88));
-          if (barEl) barEl.style.width = scaledPct + '%';
-          if (pctEl) pctEl.textContent = scaledPct + '%';
+          if (barEl) barEl.style.width = pct + '%';
+          if (pctEl) pctEl.textContent = pct + '%';
           const file = url.split('/').pop();
           if (statusEl) {
-            if (isHit) {
-              statusEl.textContent = `Vault hit: ${file}`;
-            } else {
-              statusEl.textContent = `Caching (${current}/${total}): ${file}`;
-            }
+            statusEl.textContent = isHit ? `Vault hit: ${file}` : `Caching: ${file}`;
           }
         }
       });
     } catch (err) {
-      console.warn('[Cache] Preload warning:', err);
+      console.warn('[Cache] Preload notice:', err);
     }
 
-    // Step 3: Wait for 3D architecture & exhibits
-    if (statusEl) statusEl.textContent = 'Finalizing 3D exhibits & lighting...';
-    if (barEl) barEl.style.width = '92%';
-    if (pctEl) pctEl.textContent = '92%';
-
-    try {
-      await exhibitsPromise;
-    } catch (_) {}
-
-    // Step 4: Pre-warm GPU WebGL Shaders & Textures (eliminates lag during movement)
-    if (statusEl) statusEl.textContent = 'Pre-compiling GPU shaders & warming scene...';
-    if (barEl) barEl.style.width = '98%';
-    if (pctEl) pctEl.textContent = '98%';
-
-    await new Promise(r => requestAnimationFrame(r));
-    try {
-      renderer.compile(scene, camera);
-    } catch (err) {
-      console.warn('[WebGL] Shader pre-compile warning:', err);
-    }
-
-    // Step 5: Ready!
+    // Step 3: Scene ready!
     if (barEl) barEl.style.width = '100%';
     if (pctEl) pctEl.textContent = '100%';
-    if (statusEl) statusEl.textContent = 'All assets cached locally · Museum ready!';
+    if (statusEl) statusEl.textContent = 'Galleries ready!';
     if (badgeText) {
       badgeText.textContent = cacheStatus.allCached
         ? '⚡ Instant zero-lag reload from phone storage (0ms)'
-        : '⚡ 100% Cached locally in browser storage';
+        : '⚡ 100% Cached locally in phone storage';
       if (badgeEl) badgeEl.style.color = '#ffd880';
     }
     if (mobileEnterBtn) {
@@ -431,31 +419,37 @@ if (isMobileDevice) {
       mobileEnterBtn.classList.add('ready');
     }
     if (enterText) enterText.textContent = '✦ ENTER MUSEUM ✦';
+
+    // Step 4: Pre-warm GPU shaders asynchronously without delaying the user
+    setTimeout(() => {
+      try {
+        renderer.compile(scene, camera);
+      } catch (_) {}
+    }, 50);
   }
 
   const triggerMobileEnter = e => {
-    e?.preventDefault?.();
     e?.stopPropagation?.();
     enterMuseum(true);
   };
   if (mobileEnterBtn) {
     mobileEnterBtn.addEventListener('click', triggerMobileEnter);
-    mobileEnterBtn.addEventListener('touchstart', triggerMobileEnter, { passive: false });
-    mobileEnterBtn.addEventListener('pointerdown', triggerMobileEnter);
+    mobileEnterBtn.addEventListener('touchend', triggerMobileEnter);
   }
 
-  // Safety timer: unlock enter button after 4.5s even if an asset stalls
+  // Safety timer: unlock enter button after 2.0s MAXIMUM so mobile users NEVER wait
   setTimeout(() => {
     if (mobileEnterBtn && mobileEnterBtn.disabled) {
       mobileEnterBtn.disabled = false;
+      mobileEnterBtn.classList.add('ready');
       if (enterText) enterText.textContent = '✦ ENTER MUSEUM ✦';
       if (barEl) barEl.style.width = '100%';
       if (pctEl) pctEl.textContent = '100%';
       if (statusEl) statusEl.textContent = 'Galleries ready!';
     }
-  }, 4500);
+  }, 2000);
 
-  // Kick off preload & shader warmup
+  // Kick off preload & background caching
   startMobilePreload(mobileExp);
 }
 
@@ -468,14 +462,30 @@ renderer.domElement.addEventListener('click', () => {
 
 player.controls.addEventListener('lock', () => {
   document.body.classList.add('tour-active');
-  $('start').classList.add('hide');
+  document.documentElement.classList.add('tour-active');
+  const startEl = $('start');
+  if (startEl) {
+    startEl.classList.add('hide');
+    startEl.style.setProperty('display', 'none', 'important');
+  }
   exhibits?.startMedia?.();
 });
 
 player.controls.addEventListener('unlock', () => {
   if (!interaction?.isOpen?.() && !player.isMobile()) {
     document.body.classList.remove('tour-active');
-    $('start').classList.remove('hide');
+    document.documentElement.classList.remove('tour-active');
+    const startEl = $('start');
+    if (startEl) {
+      startEl.classList.remove('hide');
+      startEl.style.display = 'flex';
+      const startTitle = $('startTitle');
+      if (startTitle) startTitle.textContent = 'TOUR PAUSED';
+      const startSub = $('startSub');
+      if (startSub) startSub.textContent = 'Select Graphics Quality or click below to resume';
+      const startBtn = $('startBtn');
+      if (startBtn) startBtn.textContent = '✦ RESUME TOUR ✦';
+    }
     exhibits?.pauseAllMedia?.();
   }
 });
@@ -491,6 +501,18 @@ const closeMenu = () => {
   menuModal?.classList.remove('show');
   player.setModalOpen(false);
 };
+
+// Pressing M on desktop toggles Museum Menu (Wings travel, sound, options)
+window.addEventListener('keydown', e => {
+  if (e.code === 'KeyM' && !interaction?.isOpen?.()) {
+    if (menuModal?.classList.contains('show')) {
+      closeMenu();
+    } else {
+      try { player.controls.unlock(); } catch (_) {}
+      openMenu();
+    }
+  }
+});
 
 $('btnMenu')?.addEventListener('click', e => {
   e.stopPropagation();

@@ -150,8 +150,115 @@ button:hover {
   cursor: pointer;
   touch-action: manipulation;
 }
+
+.start-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  max-width: 640px;
+  width: 92vw;
+  padding: 2.2rem 2.4rem;
+  background: rgba(14, 12, 10, 0.94);
+  border: 1.5px solid var(--gold);
+  border-radius: 6px;
+  box-shadow: 0 0 35px var(--gold-glow), 0 20px 60px rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.start-q-panel {
+  margin-top: 1.6rem;
+  width: 100%;
+  background: rgba(10, 8, 6, 0.75);
+  border: 1px solid rgba(184, 151, 90, 0.35);
+  border-radius: 4px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.start-q-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.start-q-label {
+  font-size: 0.70rem;
+  letter-spacing: 0.16em;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.start-q-badge {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: #0b0a09;
+  background: var(--gold);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.start-q-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.start-q-btn {
+  background: rgba(20, 16, 12, 0.85);
+  border: 1px solid rgba(184, 151, 90, 0.35);
+  border-radius: 4px;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #c4baa4;
+}
+
+.start-q-btn:hover {
+  background: rgba(184, 151, 90, 0.25);
+  border-color: var(--gold);
+  color: var(--gold2);
+  transform: translateY(-1px);
+}
+
+.start-q-btn.active {
+  background: linear-gradient(135deg, rgba(232, 195, 106, 0.35) 0%, rgba(35, 28, 18, 0.95) 100%);
+  border-color: #ffd880;
+  box-shadow: 0 0 14px rgba(232, 195, 106, 0.5);
+  color: #fff2cf;
+}
+
+.sq-title {
+  font: 700 0.78rem 'Aniron', Georgia, serif;
+  letter-spacing: 0.1em;
+}
+
+.start-q-btn.active .sq-title {
+  color: #ffd880;
+}
+
+.sq-desc {
+  font-size: 0.60rem;
+  color: #948b76;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+}
+
+.start-q-btn.active .sq-desc {
+  color: #e5dbc7;
+}
+
 .keys {
-  margin-top: 2rem;
+  margin-top: 1.6rem;
   font-size: .8rem;
   letter-spacing: .1em;
   color: #8c8470;
@@ -509,7 +616,7 @@ button:hover {
   border-radius: 20px;
   padding: 4px 8px;
   backdrop-filter: blur(8px);
-  z-index: 12;
+  z-index: 520;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
 }
 .q-label {
@@ -700,7 +807,7 @@ html.rotate-dismissed .rotate-overlay {
 
 /* --- Dedicated Mobile Loading, Local Cache & Experience Gateway --- */
 .mobile-gateway {
-  display: none !important;
+  display: none;
   position: fixed;
   inset: 0;
   z-index: 600;
@@ -716,14 +823,21 @@ html.rotate-dismissed .rotate-overlay {
 }
 
 /* Strictly display ONLY on mobile devices when tour is NOT active */
-html.mobile-device:not(.tour-active) .mobile-gateway,
-body.is-touch-device:not(.tour-active) .mobile-gateway {
-  display: flex !important;
+html.mobile-device:not(.tour-active) .mobile-gateway:not(.hide),
+body.is-touch-device:not(.tour-active) .mobile-gateway:not(.hide) {
+  display: flex;
 }
 
-/* When tour is active, hide mobile gateway */
-body.tour-active .mobile-gateway {
+/* When tour is active OR .hide is present, IMMEDIATELY HIDE with maximum specificity */
+.mobile-gateway.hide,
+html.tour-active .mobile-gateway,
+body.tour-active .mobile-gateway,
+html.tour-active #mobileGateway,
+body.tour-active #mobileGateway {
   display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 /* On mobile devices, hide default desktop #start and #loading screens */
@@ -1435,7 +1549,7 @@ body.is-touch-device #cross {
 </div>
 
 <!-- Dedicated Mobile-Only Preload, Local Cache & Experience Gateway -->
-<div id="mobileGateway" class="mobile-gateway">
+<div id="mobileGateway" class="mobile-gateway overlay">
   <div class="mg-card">
     <div class="mg-header">
       <div class="mg-badge">Virtual Museum · Mobile Edition</div>
@@ -1609,10 +1723,39 @@ body.is-touch-device #cross {
   <div class="bar"><i id="loadingBar" style="width: 15%; animation: none;"></i></div>
 </div>
 <div id="start" class="overlay">
-  <h1>Virtual Museum</h1>
-  <div class="sub">Four rooms · Art · Music · History</div>
-  <button id="startBtn">Click to enter</button>
-  <div class="keys">WASD / arrows move · Shift run · Mouse look · E inspect · Esc pause</div>
+  <div class="start-card">
+    <h1 id="startTitle">Virtual Museum</h1>
+    <div id="startSub" class="sub">Four rooms · Art · Music · History</div>
+    <button id="startBtn">Click to enter</button>
+
+    <!-- Desktop Graphics Quality Selector on Start/Pause Screen -->
+    <div class="start-q-panel">
+      <div class="start-q-header">
+        <span class="start-q-label">GRAPHICS QUALITY</span>
+        <span id="startCurrentQBadge" class="start-q-badge">AUTO</span>
+      </div>
+      <div class="start-q-grid">
+        <button data-q="low" class="q-btn start-q-btn" type="button">
+          <span class="sq-title">LOW</span>
+          <span class="sq-desc">Max FPS · No shadows</span>
+        </button>
+        <button data-q="medium" class="q-btn start-q-btn" type="button">
+          <span class="sq-title">MED</span>
+          <span class="sq-desc">Balanced · Soft shadows</span>
+        </button>
+        <button data-q="high" class="q-btn start-q-btn" type="button">
+          <span class="sq-title">HIGH</span>
+          <span class="sq-desc">Ultra · Reflections · Bloom</span>
+        </button>
+        <button data-q="auto" class="q-btn start-q-btn" type="button">
+          <span class="sq-title">AUTO</span>
+          <span class="sq-desc">Adaptive</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="keys">WASD / arrows move · Shift run · Mouse look · E inspect · Esc pause / change settings · M menu</div>
+  </div>
 </div>
 <div id="cross"></div>
 <div id="roomHud" class="room-hud">
