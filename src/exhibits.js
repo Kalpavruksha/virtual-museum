@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { L, EXHIBITS, room, placeOnWall } from './layout.js';
 import { loadTexture, labelTexture, plaqueTexture, tileBox, getCanvasNormalMap } from './materials.js';
+import { isAudioMuted } from './audio.js';
 
 const H = L.wallHeight;
 const goldMat = new THREE.MeshStandardMaterial({ color: 0x9e7f38, metalness: 0.75, roughness: 0.28 });
@@ -306,8 +307,8 @@ function audioStation(ex, isLow = false) {
         const maxDist = 3.4;
         if (d < maxDist) {
           const vol = THREE.MathUtils.clamp((maxDist - d) / (maxDist - 0.4), 0, 1) * 0.8;
-          audio.volume = vol;
-          if (audio.paused && vol > 0.02) audio.play().catch(() => {});
+          audio.volume = isAudioMuted() ? 0 : vol;
+          if (audio.paused && vol > 0.02 && !isAudioMuted()) audio.play().catch(() => {});
         } else {
           audio.volume = 0;
           if (!audio.paused) audio.pause();
@@ -331,6 +332,28 @@ function proceduralRing(radius = 0.27, tube = 0.052) {
   mesh.rotation.x = 0.52;
   mesh.castShadow = true;
   g.add(mesh);
+  return g;
+}
+
+// Procedural wand stand-in while .glb is loading
+function proceduralWand(length = 0.72) {
+  const g = new THREE.Group();
+  const shaftGeo = new THREE.CylinderGeometry(0.006, 0.014, length, 16);
+  const wandMat = new THREE.MeshStandardMaterial({
+    color: 0x241a12,
+    roughness: 0.65,
+    metalness: 0.1
+  });
+  const shaft = new THREE.Mesh(shaftGeo, wandMat);
+  shaft.rotation.z = 0.55;
+  g.add(shaft);
+
+  // Characteristic elder berry cluster nodules
+  for (const y of [-0.2, -0.08, 0.06, 0.2]) {
+    const nodule = new THREE.Mesh(new THREE.SphereGeometry(0.016, 12, 12), wandMat);
+    nodule.position.set(-y * 0.55, y * 0.85, 0);
+    g.add(nodule);
+  }
   return g;
 }
 
@@ -370,9 +393,11 @@ function modelPedestal(ex, isLow = false) {
   g.add(pedestal(g, x, z, 1.2, ped, isLow));
 
   const isRing = ex.id === 'one_ring';
-  const vitrineH = isRing ? 0.95 : (ex.height + 0.35);
+  const isWand = ex.id === 'elder_wand';
+  const vitrineH = isRing ? 0.95 : (isWand ? 1.05 : (ex.height + 0.35));
+  const glassW = isWand ? 1.35 : 1.12;
   const glass = new THREE.Mesh(
-    new THREE.BoxGeometry(1.12, vitrineH, 1.12),
+    new THREE.BoxGeometry(glassW, vitrineH, glassW),
     isLow
       ? new THREE.MeshBasicMaterial({
           color: 0xddedff,
@@ -397,8 +422,9 @@ function modelPedestal(ex, isLow = false) {
 
   if (!isLow) {
     // Brass corner clips on the glass vitrine (desktop high only)
-    for (const cx of [x - 0.55, x + 0.55]) {
-      for (const cz of [z - 0.55, z + 0.55]) {
+    const clipOffset = glassW / 2 - 0.01;
+    for (const cx of [x - clipOffset, x + clipOffset]) {
+      for (const cz of [z - clipOffset, z + clipOffset]) {
         const clip = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.07, 0.04), brassMat);
         clip.position.set(cx, ped + vitrineH - 0.035, cz);
         g.add(clip);
@@ -407,13 +433,15 @@ function modelPedestal(ex, isLow = false) {
   }
 
   const holder = new THREE.Group();
-  const baseY = isRing ? (ped + vitrineH / 2) : (ped + 0.02);
+  const baseY = (isRing || isWand) ? (ped + vitrineH / 2) : (ped + 0.02);
   holder.position.set(x, baseY, z);
   g.add(holder);
 
   // Initial stand-in while GLTF loads
   if (isRing) {
     holder.add(proceduralRing(0.19, 0.038));
+  } else if (isWand) {
+    holder.add(proceduralWand(0.72));
   } else {
     holder.add(proceduralEiffel(ex.height));
   }
@@ -526,6 +554,19 @@ function modelPedestal(ex, isLow = false) {
 
           holder.add(ringGlow, frontFill);
         }
+      } else if (isWand) {
+        m.position.sub(center);
+        // Angle diagonally in vitrine so the full sculpted length is beautifully displayed
+        m.rotation.x = 0.28;
+        m.rotation.z = 0.65;
+        if (!isLow) {
+          // Lumos ethereal blue-white tip glow
+          const lumosLight = new THREE.PointLight(0xbadcff, 2.6, 2.8, 2);
+          lumosLight.position.set(0.32, 0.26, 0.12);
+          const wandFill = new THREE.PointLight(0xfff1da, 2.0, 3.0, 2);
+          wandFill.position.set(-0.25, -0.2, 0.45);
+          holder.add(lumosLight, wandFill);
+        }
       } else {
         // Center on X and Z, place base directly on the pedestal surface
         m.position.set(-center.x, -b2.min.y, -center.z);
@@ -549,11 +590,11 @@ function modelPedestal(ex, isLow = false) {
   g.add(pl);
 
   // Spotlight with soft contact shadow
-  const spotTargetY = isRing ? baseY : (ped + ex.height / 2);
-  spot(g, new THREE.Vector3(x, H - 0.3, z + 0.6), new THREE.Vector3(x, spotTargetY, z), isRing ? 75 : 48, !isLow, isLow);
+  const spotTargetY = (isRing || isWand) ? baseY : (ped + ex.height / 2);
+  spot(g, new THREE.Vector3(x, H - 0.3, z + 0.6), new THREE.Vector3(x, spotTargetY, z), isRing ? 75 : (isWand ? 65 : 48), !isLow, isLow);
 
-  const hiHeight = isRing ? (vitrineH + 0.1) : (ex.height + 0.4);
-  const hi = highlight(1.3, ped + hiHeight, 1.3);
+  const hiHeight = isRing ? (vitrineH + 0.1) : (isWand ? (vitrineH + 0.1) : (ex.height + 0.4));
+  const hi = highlight(glassW + 0.18, ped + hiHeight, glassW + 0.18);
   hi.position.set(x, (ped + hiHeight) / 2, z);
   g.add(hi);
   g.userData = { exhibit: ex, highlight: hi };
@@ -585,8 +626,8 @@ function modelPedestal(ex, isLow = false) {
         const maxDist = 5.8;
         if (d < maxDist) {
           const vol = THREE.MathUtils.clamp((maxDist - d) / (maxDist - 0.8), 0, 1) * 0.85;
-          ringAudio.volume = vol;
-          if (ringAudio.paused && vol > 0.01) ringAudio.play().catch(() => {});
+          ringAudio.volume = isAudioMuted() ? 0 : vol;
+          if (ringAudio.paused && vol > 0.01 && !isAudioMuted()) ringAudio.play().catch(() => {});
         } else {
           ringAudio.volume = 0;
           if (!ringAudio.paused) ringAudio.pause();
@@ -598,8 +639,9 @@ function modelPedestal(ex, isLow = false) {
   const rotator = {
     holder,
     isRing,
+    isWand,
     baseY,
-    speed: isRing ? 0.75 : 0.25,
+    speed: isRing ? 0.75 : (isWand ? 0.38 : 0.25),
     time: Math.random() * 10
   };
 
@@ -637,6 +679,10 @@ export async function buildExhibits(scene, colliders, Q = {}) {
           r.holder.position.y = r.baseY + Math.sin(r.time * 2.2) * 0.038;
           // Subtle gyroscopic wobble
           r.holder.rotation.z = Math.sin(r.time * 1.5) * 0.06;
+        } else if (r.isWand) {
+          // Subtle magical levitation bob & gentle angle sway
+          r.holder.position.y = r.baseY + Math.sin(r.time * 1.8) * 0.024;
+          r.holder.rotation.z = 0.65 + Math.sin(r.time * 1.3) * 0.035;
         }
       });
     },

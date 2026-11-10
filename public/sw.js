@@ -29,7 +29,8 @@ self.addEventListener('fetch', event => {
     url.pathname.endsWith('.glb') ||
     url.pathname.endsWith('.jpg') ||
     url.pathname.endsWith('.png') ||
-    url.pathname.endsWith('.mp3');
+    url.pathname.endsWith('.mp3') ||
+    url.pathname.endsWith('.webm');
 
   if (!isMuseumAsset) return;
 

@@ -233,7 +233,7 @@
       "id": "eiffel",
       "type": "model",
       "room": "history",
-      "pos": [-4, -41],
+      "pos": [-7.0, -44],
       "title": "Eiffel Tower (Scale Model)",
       "artist": "Gustave Eiffel's engineering team",
       "year": "1889",
@@ -249,7 +249,7 @@
       "id": "one_ring",
       "type": "model",
       "room": "history",
-      "pos": [4, -41],
+      "pos": [0, -44],
       "title": "The One Ring",
       "artist": "Sauron / J.R.R. Tolkien Legendarium",
       "year": "Second Age c. 1600",
@@ -261,6 +261,24 @@
       "hover": true,
       "description": "The Master Ring forged by the Dark Lord Sauron in the fires of Mount Doom. Crafted in lustrous antique bronze-gold with dark engraved lettering on both the outer and inner band, it hovers in the glass vitrine while its haunting violin theme plays.",
       "license": "Legendarium Showcase",
+      "download": null
+    },
+    {
+      "id": "elder_wand",
+      "type": "model",
+      "room": "history",
+      "pos": [7.0, -44],
+      "title": "The Elder Wand",
+      "artist": "Death / Antioch Peverell · Owned by Albus Dumbledore",
+      "year": "13th Century",
+      "src": "/assets/the_elder_wand.glb",
+      "thumb": "/assets/dumbledore.jpg",
+      "audioSrc": "/assets/Harry-Potter-and-SnapYT.App.webm",
+      "height": 0.85,
+      "targetSize": 0.85,
+      "hover": true,
+      "description": "The most powerful wand in existence, crafted from elder wood with a core of Thestral tail hair. The first and deadliest of the three legendary Deathly Hallows created by Death. Mastered by Professor Albus Dumbledore following his historic 1945 duel against Gellert Grindelwald.",
+      "license": "Wizarding World Artifact",
       "download": null
     }
   ]

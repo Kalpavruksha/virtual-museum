@@ -33,7 +33,10 @@ export const SECONDARY_GALLERY_ASSETS = [
   '/assets/models/one-ring/textures/2000px-One_Ring_inscription.jpeg',
   '/assets/models/one-ring/textures/one_ring_inscription_gold.png',
   '/assets/models/one-ring/textures/ring_engrave_bump.png',
-  '/assets/models/one-ring/textures/ring_engrave_roughness.png'
+  '/assets/models/one-ring/textures/ring_engrave_roughness.png',
+  '/assets/the_elder_wand.glb',
+  '/assets/dumbledore.jpg',
+  '/assets/Harry-Potter-and-SnapYT.App.webm'
 ];
 
 export const STANDARD_ASSETS = [

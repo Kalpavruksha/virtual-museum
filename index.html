@@ -573,6 +573,132 @@ button:hover {
   line-height: 1.4;
   letter-spacing: 0.02em;
 }
+
+/* Harry Potter Elder Wand Tabs & Lore Styling */
+.wand-media-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  width: 100%;
+}
+.wand-tab-btn {
+  flex: 1;
+  padding: 8px 10px;
+  background: rgba(20, 16, 12, 0.88);
+  border: 1px solid rgba(184, 151, 90, 0.45);
+  border-radius: 4px;
+  color: #c9ba9b;
+  font: 600 0.72rem 'Aniron', Georgia, serif;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.wand-tab-btn:hover {
+  background: rgba(35, 28, 20, 0.95);
+  border-color: #ffd880;
+  color: #fff;
+}
+.wand-tab-btn.active {
+  background: linear-gradient(135deg, rgba(232, 195, 106, 0.3) 0%, rgba(35, 28, 18, 0.95) 100%);
+  border-color: #ffd880;
+  color: #ffd880;
+  box-shadow: 0 0 10px rgba(232, 195, 106, 0.35);
+}
+
+.wand-owner-callout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  margin: 8px 0 10px;
+  background: linear-gradient(135deg, rgba(38, 28, 18, 0.9) 0%, rgba(18, 14, 10, 0.95) 100%);
+  border: 1.5px solid rgba(232, 195, 106, 0.55);
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55), inset 0 0 12px rgba(232, 195, 106, 0.08);
+}
+.owner-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px rgba(232, 195, 106, 0.6));
+}
+.owner-info {
+  display: flex;
+  flex-direction: column;
+}
+.owner-label {
+  font: 700 0.60rem 'Aniron', Georgia, serif;
+  letter-spacing: 0.16em;
+  color: #ffd880;
+  text-transform: uppercase;
+}
+.owner-name {
+  font: 700 0.92rem 'Cinzel', Georgia, serif;
+  color: #fff4db;
+  letter-spacing: 0.04em;
+  margin-top: 1px;
+}
+.owner-sub {
+  font-size: 0.70rem;
+  color: #a89f89;
+  font-style: italic;
+  margin-top: 1px;
+}
+
+.wand-lore-banner {
+  margin: 10px 0 12px;
+  background: #090706;
+  border: 1px solid rgba(232, 195, 106, 0.45);
+  border-radius: 4px;
+  padding: 10px 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.65);
+}
+.hallows-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(184, 151, 90, 0.25);
+}
+.hallows-icon {
+  width: 36px;
+  height: 32px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(232, 195, 106, 0.6));
+}
+.hallows-title-block {
+  display: flex;
+  flex-direction: column;
+}
+.hallows-pre {
+  font: 700 0.58rem 'Aniron', Georgia, serif;
+  letter-spacing: 0.18em;
+  color: var(--gold2);
+  text-transform: uppercase;
+}
+.hallows-main {
+  font: 700 0.80rem 'Aniron', Georgia, serif;
+  letter-spacing: 0.10em;
+  color: #f7e8c4;
+}
+.hallows-content {
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: #ded6c2;
+}
+.hallows-content p {
+  margin: 0 0 6px 0;
+}
+.hallows-content p:last-child {
+  margin-bottom: 0;
+}
+.hallows-content strong {
+  color: #ffd880;
+}
+.hallows-content em {
+  color: #e5dbc7;
+}
+
 .info-col {
   display: flex;
   flex-direction: column;
@@ -1518,13 +1644,15 @@ body.is-touch-device #cross {
 /* Minimap Mobile Positioning & Landscape Modals */
 @media (max-width: 1024px) and (orientation: landscape), (max-height: 520px) {
   #minimap {
-    width: 60px !important;
-    height: 148px !important;
+    width: 90px !important;
+    height: 196px !important;
     right: calc(14px + env(safe-area-inset-right));
-    top: calc(56px + env(safe-area-inset-top));
+    top: calc(52px + env(safe-area-inset-top));
     bottom: auto !important;
-    opacity: 0.85;
+    opacity: 0.92;
     border-radius: 4px;
+    pointer-events: none;
+    z-index: 15;
   }
   .quality-selector {
     display: none; /* Quality accessible via MENU button on mobile */
@@ -1555,6 +1683,20 @@ body.is-touch-device #cross {
   .menu-card {
     padding: 1.2rem;
     max-height: 92vh;
+  }
+}
+
+@media (max-width: 768px) and (orientation: portrait) {
+  #minimap {
+    width: 98px !important;
+    height: 213px !important;
+    right: calc(12px + env(safe-area-inset-right));
+    top: calc(56px + env(safe-area-inset-top));
+    bottom: auto !important;
+    opacity: 0.92;
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 15;
   }
 }
 </style>
@@ -1702,7 +1844,7 @@ body.is-touch-device #cross {
           <span class="tp-num">III</span>
           <span class="tp-name">Music & Instruments Hall</span>
         </button>
-        <button class="teleport-btn" data-room="history" data-x="0" data-z="-41" data-yaw="0">
+        <button class="teleport-btn" data-room="history" data-x="0" data-z="-44" data-yaw="0">
           <span class="tp-num">IV</span>
           <span class="tp-name">History & Science Room</span>
         </button>
@@ -1798,6 +1940,10 @@ body.is-touch-device #cross {
     <button id="p-x" class="p-close-x" title="Close (Esc)">✕</button>
     <div class="panel-grid">
       <div class="media-col">
+        <div id="p-wand-tabs" class="wand-media-tabs" style="display:none;">
+          <button id="p-tab-dumbledore" class="wand-tab-btn active">🧙‍♂️ Master: Dumbledore</button>
+          <button id="p-tab-3d" class="wand-tab-btn">🪄 3D Elder Wand</button>
+        </div>
         <img id="p-img" src="" alt="Artwork Preview" loading="lazy" style="display:none;" />
         <div id="p-model-wrap" class="model-viewer-wrap" style="display:none;">
           <canvas id="p-canvas"></canvas>
@@ -1815,9 +1961,35 @@ body.is-touch-device #cross {
           <span id="p-type-badge" class="badge"></span>
           <span id="p-room-badge" class="badge"></span>
         </div>
+        <div id="p-wand-owner" class="wand-owner-callout" style="display:none;">
+          <span class="owner-icon">👑</span>
+          <div class="owner-info">
+            <span class="owner-label">WAND OWNER & MASTER</span>
+            <span class="owner-name">Professor Albus Percival Wulfric Brian Dumbledore</span>
+            <span class="owner-sub">Mastered in the Historic 1945 Duel against Gellert Grindelwald</span>
+          </div>
+        </div>
         <h2 id="p-title"></h2>
         <div id="p-meta"></div>
         <div id="p-desc"></div>
+        <div id="p-wand-lore-wrap" class="wand-lore-banner" style="display:none;">
+          <div class="hallows-header">
+            <svg viewBox="0 0 100 88" class="hallows-icon" aria-hidden="true">
+              <polygon points="50,6 6,82 94,82" fill="none" stroke="#e8c36a" stroke-width="3.5" stroke-linejoin="round" />
+              <circle cx="50" cy="56" r="26" fill="none" stroke="#e8c36a" stroke-width="3" />
+              <line x1="50" y1="6" x2="50" y2="82" stroke="#ffd880" stroke-width="4.2" stroke-linecap="round" />
+            </svg>
+            <div class="hallows-title-block">
+              <div class="hallows-pre">THE DEATHLY HALLOWS</div>
+              <div class="hallows-main">THE FIRST & DEADLIEST HALLOW</div>
+            </div>
+          </div>
+          <div class="hallows-content">
+            <p><strong>The Elder Wand (Deathstick / Wand of Destiny):</strong> 15 inches long, fashioned from elder wood with a core of Thestral tail hair — a substance visible only to those who have witnessed and comprehended death. It is the most lethal dueling wand in wizarding history.</p>
+            <p><strong>The Tale of the Three Brothers:</strong> Created by Death for Antioch Peverell. Legend tells that whoever unites all three Hallows — the <em>Elder Wand</em>, the <em>Resurrection Stone</em>, and the <em>Cloak of Invisibility</em> — shall become the true <strong>Master of Death</strong>.</p>
+            <p><strong>Dumbledore's Stewardship:</strong> Albus Dumbledore won mastery of the wand following his legendary 1945 duel against Gellert Grindelwald. He wielded its unmatched power solely to protect the wizarding world and guard Hogwarts.</p>
+          </div>
+        </div>
         <div id="p-inscription-wrap" class="inscription-banner" style="display:none;">
           <div class="inscr-title">ELVISH TENGWAR INSCRIPTION · BLACK SPEECH OF MORDOR</div>
           <img id="p-inscription-img" src="/assets/models/one-ring/textures/2000px-One_Ring_inscription.jpeg" alt="Elvish Tengwar Inscription" loading="lazy" />

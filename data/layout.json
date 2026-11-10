@@ -14,7 +14,7 @@
     { "id": "music", "name": "Music & Instruments Hall", "center": [0, -27], "size": [18, 14],
       "floor": "parquet", "wall": "plasterDark",
       "doors": [{ "wall": "south", "at": 0, "width": 3.4, "height": 3.6 }] },
-    { "id": "history", "name": "History & Science Room", "center": [0, -41], "size": [18, 14],
+    { "id": "history", "name": "History & Science Room", "center": [0, -44], "size": [26, 20],
       "floor": "marble", "wall": "plasterCool",
       "doors": [{ "wall": "south", "at": 0, "width": 3.4, "height": 3.6 }] }
   ]

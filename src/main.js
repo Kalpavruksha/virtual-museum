@@ -725,7 +725,7 @@ renderer.setAnimationLoop(() => {
   if (lightPool && exhibits) {
     lightPool.update(camera, exhibits.allExhibitSpots);
   }
-  if (t0 - mapT > 100) {
+  if (t0 - mapT > 40) {
     drawMap(camera);
     mapT = t0;
   }

@@ -147,7 +147,8 @@ export function createInteraction({ camera, targets, blockers, controls, player,
     modalCamera.updateProjectionMatrix();
 
     const isRing = ex.id === 'one_ring';
-    modalCamera.position.set(0, 0, isRing ? 2.35 : 2.6);
+    const isWand = ex.id === 'elder_wand';
+    modalCamera.position.set(0, 0, isRing ? 2.35 : (isWand ? 2.2 : 2.6));
 
     const loader = new GLTFLoader();
     try {
@@ -213,7 +214,7 @@ export function createInteraction({ camera, targets, blockers, controls, player,
       const size = new THREE.Vector3();
       b.getSize(size);
       const maxDim = Math.max(size.x, size.y, size.z);
-      const s = (isRing ? 0.72 : 1.6) / Math.max(maxDim, 0.001);
+      const s = (isRing ? 0.72 : (isWand ? 1.4 : 1.6)) / Math.max(maxDim, 0.001);
       m.scale.setScalar(s);
 
       const b2 = new THREE.Box3().setFromObject(m);
@@ -231,6 +232,16 @@ export function createInteraction({ camera, targets, blockers, controls, player,
         const ringGlow = new THREE.PointLight(0xffe29a, 2.8, 2.2, 2);
         ringGlow.position.set(0, 0, 0);
         modalPivot.add(ringGlow);
+      } else if (isWand) {
+        // Diagonal dramatic wand presentation
+        modalPivot.rotation.x = 0.28;
+        modalPivot.rotation.y = 0.15;
+        modalPivot.rotation.z = 0.65;
+
+        // Ethereal Lumos glow
+        const wandGlow = new THREE.PointLight(0xbadcff, 2.6, 2.8, 2);
+        wandGlow.position.set(0.35, 0.3, 0.2);
+        modalPivot.add(wandGlow);
       }
 
       modalPivot.add(m);
@@ -315,7 +326,42 @@ export function createInteraction({ camera, targets, blockers, controls, player,
     videoWrap.style.display = 'none';
     stopModelViewer();
 
-    if (ex.type === 'image') {
+    const isWand = ex.id === 'elder_wand';
+    const wandTabs = $('#p-wand-tabs');
+    const wandOwner = $('#p-wand-owner');
+    const wandLore = $('#p-wand-lore-wrap');
+
+    if (wandTabs) wandTabs.style.display = isWand ? 'flex' : 'none';
+    if (wandOwner) wandOwner.style.display = isWand ? 'flex' : 'none';
+    if (wandLore) wandLore.style.display = isWand ? 'block' : 'none';
+
+    if (isWand) {
+      // By default display the photo of Dumbledore on the left
+      img.src = '/assets/dumbledore.jpg';
+      img.style.display = 'block';
+      modelWrap.style.display = 'none';
+
+      const tabDumb = $('#p-tab-dumbledore');
+      const tab3D = $('#p-tab-3d');
+      if (tabDumb) tabDumb.classList.add('active');
+      if (tab3D) tab3D.classList.remove('active');
+
+      if (tabDumb && tab3D) {
+        tabDumb.onclick = () => {
+          tabDumb.classList.add('active');
+          tab3D.classList.remove('active');
+          stopModelViewer();
+          img.src = '/assets/dumbledore.jpg';
+          img.style.display = 'block';
+        };
+        tab3D.onclick = () => {
+          tab3D.classList.add('active');
+          tabDumb.classList.remove('active');
+          img.style.display = 'none';
+          startModelViewer(ex);
+        };
+      }
+    } else if (ex.type === 'image') {
       img.src = ex.src;
       img.style.display = 'block';
     } else if (ex.type === 'audio') {
@@ -351,6 +397,13 @@ export function createInteraction({ camera, targets, blockers, controls, player,
 
     const inscrWrap = $('#p-inscription-wrap');
     if (inscrWrap) inscrWrap.style.display = 'none';
+
+    const wandTabs = $('#p-wand-tabs');
+    const wandOwner = $('#p-wand-owner');
+    const wandLore = $('#p-wand-lore-wrap');
+    if (wandTabs) wandTabs.style.display = 'none';
+    if (wandOwner) wandOwner.style.display = 'none';
+    if (wandLore) wandLore.style.display = 'none';
 
     // Pause and reset any modal playback
     const audioEl = $('#p-audio');
