@@ -285,7 +285,7 @@ export function createInteraction({ camera, targets, blockers, controls, player,
 
     // Check proximity to secret door (X = 9.5, Z = -54.0)
     const distToDoor = Math.hypot(camera.position.x - 9.5, camera.position.z - (-54.0));
-    const isNearDoor = distToDoor < 3.2 && secretDoor && !secretDoor.isUnlocked;
+    const isNearDoor = distToDoor < 4.5 && secretDoor && !secretDoor.isUnlocked;
 
     if (found !== current) {
       if (current && current.userData?.highlight) current.userData.highlight.visible = false;
@@ -452,14 +452,14 @@ export function createInteraction({ camera, targets, blockers, controls, player,
       return;
     }
     const distToDoor = Math.hypot(camera.position.x - 9.5, camera.position.z - (-54.0));
-    if ((distToDoor < 3.2 || (current && current.userData?.isSecretDoor)) && secretDoor && !secretDoor.isUnlocked) {
+    if ((distToDoor < 4.5 || (current && current.userData?.isSecretDoor)) && secretDoor && !secretDoor.isUnlocked) {
       openPasscode?.();
       return;
     }
     if (current && current.userData?.exhibit) {
       show(current.userData.exhibit);
     } else {
-      // Find nearest exhibit in front
+      // Find nearest exhibit or secret door in front
       ray.setFromCamera({ x: 0, y: 0 }, camera);
       const hit = ray.intersectObjects(all, true)[0];
       if (hit) {
@@ -476,7 +476,7 @@ export function createInteraction({ camera, targets, blockers, controls, player,
   function tapSelect(clientX, clientY) {
     if (open || (performance.now() - lastClose < 400)) return false;
     const distToDoor = Math.hypot(camera.position.x - 9.5, camera.position.z - (-54.0));
-    if (distToDoor < 3.2 && secretDoor && !secretDoor.isUnlocked) {
+    if (distToDoor < 4.5 && secretDoor && !secretDoor.isUnlocked) {
       openPasscode?.();
       return true;
     }
@@ -517,8 +517,7 @@ export function createInteraction({ camera, targets, blockers, controls, player,
 
   addEventListener('keydown', e => {
     if (e.code === 'KeyE') {
-      if (open) close();
-      else if (current) show(current.userData.exhibit);
+      interact();
     }
     if ((e.code === 'Escape' || e.key === 'Escape') && open) {
       e.preventDefault();
@@ -526,24 +525,11 @@ export function createInteraction({ camera, targets, blockers, controls, player,
     }
   });
 
-  // Clicking an exhibit in focus opens it directly
+  // Clicking an exhibit or secret door in focus opens it directly
   window.addEventListener('click', e => {
     if (open || (performance.now() - lastClose < 400)) return;
-    if (e.target.tagName === 'BUTTON' || panel.contains(e.target) || e.target.closest('#mobileControls')) return;
-    if (current) {
-      show(current.userData.exhibit);
-    } else {
-      const mouse = {
-        x: (e.clientX / innerWidth) * 2 - 1,
-        y: -(e.clientY / innerHeight) * 2 + 1
-      };
-      ray.setFromCamera(mouse, camera);
-      const hit = ray.intersectObjects(all, true)[0];
-      if (hit) {
-        const found = owner(hit.object);
-        if (found) show(found.userData.exhibit);
-      }
-    }
+    if (e.target.tagName === 'BUTTON' || panel.contains(e.target) || e.target.closest('#mobileControls') || e.target.closest('#passcodeModal') || e.target.closest('#menuModal')) return;
+    interact();
   });
 
   const doClose = e => {

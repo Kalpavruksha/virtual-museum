@@ -485,11 +485,18 @@ export function buildArchitecture(scene, options = {}) {
   doorHi.visible = false;
   doorLeaf.add(doorHi);
 
+  leftPost.userData = { isSecretDoor: true, highlight: doorHi };
+  rightPost.userData = { isSecretDoor: true, highlight: doorHi };
+  topLintel.userData = { isSecretDoor: true, highlight: doorHi };
+  frameTrim.userData = { isSecretDoor: true, highlight: doorHi };
+  dialPlate.userData = { isSecretDoor: true, highlight: doorHi };
+  lockGem.userData = { isSecretDoor: true, highlight: doorHi };
+  handleRing.userData = { isSecretDoor: true, highlight: doorHi };
   doorLeaf.userData = { isSecretDoor: true, highlight: doorHi };
   doorPanel.userData = { isSecretDoor: true, highlight: doorHi };
 
   doorPivot.add(doorLeaf);
-  blockers.push(doorPanel);
+  blockers.push(doorPanel, doorLeaf);
 
   // Door collision box when closed
   const secretDoorCollider = {

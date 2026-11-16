@@ -543,7 +543,7 @@ player.controls.addEventListener('lock', () => {
 });
 
 player.controls.addEventListener('unlock', () => {
-  if (!interaction?.isOpen?.()) {
+  if (!interaction?.isOpen?.() && !passcodeModal?.classList.contains('show') && !menuModal?.classList.contains('show')) {
     if (!player.isMobile()) {
       document.body.classList.remove('tour-active');
       document.documentElement.classList.remove('tour-active');
@@ -616,9 +616,9 @@ function openPasscodeModal() {
   if (secretDoor?.isUnlocked) return;
   if (interaction?.isOpen?.()) interaction.close();
   if (menuModal?.classList.contains('show')) closeMenu();
+  passcodeModal?.classList.add('show');
   player.setModalOpen(true);
   try { player.controls.unlock(); } catch (_) {}
-  passcodeModal?.classList.add('show');
   if (passcodeInput) {
     passcodeInput.value = '';
     if (passcodeStatus) {
@@ -632,6 +632,9 @@ function openPasscodeModal() {
 function closePasscodeModal() {
   passcodeModal?.classList.remove('show');
   player.setModalOpen(false);
+  if (!player.isMobile()) {
+    try { player.controls.lock(); } catch (_) {}
+  }
 }
 
 function submitPasscode() {
@@ -658,6 +661,10 @@ function submitPasscode() {
 }
 
 passcodeForm?.addEventListener('submit', e => {
+  e.preventDefault();
+  submitPasscode();
+});
+$('passcodeSubmitBtn')?.addEventListener('click', e => {
   e.preventDefault();
   submitPasscode();
 });
