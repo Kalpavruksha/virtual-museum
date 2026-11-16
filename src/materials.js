@@ -218,11 +218,14 @@ export function labelTexture(title, sub, aspect = 1.4) {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
-export function plaqueTexture(title, artist, year) {
+export function plaqueTexture(title, artist, year, titleFontSize = null) {
   const c = document.createElement('canvas'); c.width = 512; c.height = 256;
   const g = c.getContext('2d'); g.fillStyle = '#15130f'; g.fillRect(0, 0, 512, 256);
   g.strokeStyle = '#b8975a'; g.lineWidth = 4; g.strokeRect(8, 8, 496, 240);
-  g.textAlign = 'center'; g.fillStyle = '#e8d9b0'; g.font = 'bold 30px Aniron, Georgia, serif'; g.fillText(title, 256, 90, 470);
+  g.textAlign = 'center'; g.fillStyle = '#e8d9b0';
+  const size = titleFontSize || (title.length > 20 ? 28 : 30);
+  g.font = `bold ${size}px Aniron, Georgia, serif`;
+  g.fillText(title, 256, 88, 470);
   g.fillStyle = '#b8975a'; g.font = '24px Aniron, Georgia, serif'; g.fillText(artist, 256, 148, 470);
   g.font = '22px Aniron, Georgia, serif'; g.fillText(year, 256, 198, 470);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;

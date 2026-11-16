@@ -134,13 +134,16 @@ async function frameArt(ex, isLow = false) {
     }
   }
 
+  const isKeerti = ex.id === 'keerti_photo';
+  const plaqueW = isKeerti ? 0.54 : 0.42;
+  const plaqueH = isKeerti ? 0.27 : 0.21;
   const pl = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.42, 0.21),
+    new THREE.PlaneGeometry(plaqueW, plaqueH),
     isLow
-      ? new THREE.MeshBasicMaterial({ map: plaqueTexture(ex.title, ex.artist, ex.year) })
-      : new THREE.MeshStandardMaterial({ map: plaqueTexture(ex.title, ex.artist, ex.year), roughness: 0.4 })
+      ? new THREE.MeshBasicMaterial({ map: plaqueTexture(ex.title, ex.artist, ex.year, isKeerti ? 38 : null) })
+      : new THREE.MeshStandardMaterial({ map: plaqueTexture(ex.title, ex.artist, ex.year, isKeerti ? 38 : null), roughness: 0.4 })
   );
-  pl.position.set(W / 2 + 0.38, -0.1, 0.012);
+  pl.position.set(W / 2 + (isKeerti ? 0.44 : 0.38), -0.1, 0.012);
   g.add(pl);
 
   spot(g, new THREE.Vector3(0, H - 0.3 - y, 2.2), new THREE.Vector3(0, 0, 0), 28, false, isLow);

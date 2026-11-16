@@ -324,7 +324,13 @@ export function createInteraction({ camera, targets, blockers, controls, player,
       suspendAudio();
     }
 
-    $('#p-title').textContent = ex.title;
+    const pTitle = $('#p-title');
+    pTitle.textContent = ex.title;
+    if (ex.id === 'keerti_photo') {
+      pTitle.classList.add('keerti-title');
+    } else {
+      pTitle.classList.remove('keerti-title');
+    }
     $('#p-meta').textContent = `${ex.artist} · ${ex.year}`;
     $('#p-desc').textContent = ex.description;
     $('#p-lic').textContent = `${ex.type.toUpperCase()} · ${ex.license || 'Public Domain'}`;
