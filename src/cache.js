@@ -37,7 +37,8 @@ export const SECONDARY_GALLERY_ASSETS = [
   '/assets/the_elder_wand.glb',
   '/assets/dumbledore.jpg',
   '/assets/Harry-Potter-and-SnapYT.App.webm',
-  '/assets/images/img.jpg'
+  '/assets/images/img.jpg',
+  '/assets/audio/Rara-by-Chandramukhi-SnapYT.App.m4a'
 ];
 
 export const STANDARD_ASSETS = [

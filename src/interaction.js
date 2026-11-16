@@ -381,6 +381,13 @@ export function createInteraction({ camera, targets, blockers, controls, player,
     } else if (ex.type === 'image') {
       img.src = ex.src;
       img.style.display = 'block';
+      if (ex.audioSrc) {
+        audioEl.src = ex.audioSrc;
+        audioWrap.style.display = 'block';
+        if (!isAudioMuted()) {
+          audioEl.play().catch(() => {});
+        }
+      }
     } else if (ex.type === 'audio') {
       if (ex.thumb) {
         img.src = ex.thumb;

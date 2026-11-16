@@ -149,7 +149,39 @@ async function frameArt(ex, isLow = false) {
   hi.position.z = D / 2;
   g.add(hi);
   g.userData = { exhibit: ex, highlight: hi };
-  return { object: g };
+
+  let media;
+  if (ex.audioSrc) {
+    const artAudio = new Audio(ex.audioSrc);
+    allExhibitAudios.push(artAudio);
+    artAudio.loop = true;
+    artAudio.volume = 0;
+    artAudio.preload = 'none';
+    let started = false;
+
+    media = {
+      pos: new THREE.Vector3(p.x, 1.6, p.z),
+      start: () => { started = true; },
+      pause: () => {
+        if (!artAudio.paused) artAudio.pause();
+      },
+      update: d => {
+        if (!started) return;
+        // Room/portrait proximity range: plays when inside chamber or near portrait (within 8.5m)
+        const maxDist = 8.5;
+        if (d < maxDist && !isAudioMuted()) {
+          const vol = THREE.MathUtils.clamp((maxDist - d) / (maxDist - 1.2), 0, 1) * 0.85;
+          artAudio.volume = vol;
+          if (artAudio.paused && vol > 0.02) artAudio.play().catch(() => {});
+        } else {
+          artAudio.volume = 0;
+          if (!artAudio.paused) artAudio.pause();
+        }
+      }
+    };
+  }
+
+  return { object: g, media };
 }
 
 function videoScreen(ex, isLow = false) {

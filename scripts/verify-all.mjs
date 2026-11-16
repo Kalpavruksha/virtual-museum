@@ -98,6 +98,8 @@ const keertiEx = exhibitsData.exhibits.find(e => e.id === 'keerti_photo');
 check('Keerti photo exhibit exists', !!keertiEx);
 check('Keerti photo title is exactly "Keerti Gadegepagoudar"', keertiEx?.title === 'Keerti Gadegepagoudar');
 check('Keerti photo room is secret and wall is north', keertiEx?.room === 'secret' && keertiEx?.wall === 'north');
+check('Keerti photo audioSrc is defined', keertiEx?.audioSrc === '/assets/audio/Rara-by-Chandramukhi-SnapYT.App.m4a');
+check('Keerti photo audio file exists in public/assets/audio', fs.existsSync(path.join('museum/public', keertiEx?.audioSrc)));
 
 const archJs = fs.readFileSync('museum/src/architecture.js', 'utf8');
 check('architecture.js exports secretDoor', archJs.includes('secretDoor'));
