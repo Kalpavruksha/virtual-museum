@@ -280,6 +280,22 @@
       "description": "The most powerful wand in existence, crafted from elder wood with a core of Thestral tail hair. The first and deadliest of the three legendary Deathly Hallows created by Death. Mastered by Professor Albus Dumbledore following his historic 1945 duel against Gellert Grindelwald.",
       "license": "Wizarding World Artifact",
       "download": null
+    },
+    {
+      "id": "keerti_photo",
+      "type": "image",
+      "room": "secret",
+      "wall": "north",
+      "at": 0,
+      "maxSize": [1.8, 2.7],
+      "title": "Keerti Gadegepagoudar",
+      "artist": "Special Honored Dedication",
+      "year": "2026",
+      "src": "/assets/images/img.jpg",
+      "thumb": "/assets/images/img.jpg",
+      "description": "An honored and celebrated portrait of Keerti Gadegepagoudar, enshrined in the museum's hidden sanctuary with profound distinction and admiration.",
+      "license": "Private Exhibition · Honored Dedication",
+      "download": null
     }
   ]
 }

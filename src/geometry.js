@@ -23,10 +23,15 @@ export function placeOnWall(L, r, wall, at, off = 0) {
 // Doors that cut a wall. Rooms are stacked along -Z, so a room's NORTH wall is the next room's SOUTH wall.
 export function doorsFor(L, r, wall) {
   const i = L.rooms.indexOf(r);
-  if (wall === 'south') return r.doors.filter(d => d.wall === 'south');
+  if (wall === 'south') return (r.doors || []).filter(d => d.wall === 'south');
   if (wall === 'north') {
+    const ownNorth = (r.doors || []).filter(d => d.wall === 'north');
+    if (ownNorth.length > 0) return ownNorth;
     const next = L.rooms[i + 1];
-    return next ? next.doors.filter(d => d.wall === 'south').map(d => ({ ...d, at: -d.at })) : [];
+    return next ? (next.doors || []).filter(d => d.wall === 'south').map(d => ({ ...d, at: -d.at })) : [];
+  }
+  if (wall === 'east' || wall === 'west') {
+    return (r.doors || []).filter(d => d.wall === wall);
   }
   return [];
 }
@@ -55,7 +60,8 @@ export function pieceAABB(L, r, wall, p) {
 }
 
 export function wallsToBuild(L, r) {
-  const last = L.rooms[L.rooms.length - 1] === r;
+  if (r.id === 'secret') return ['east', 'west', 'north'];
+  const last = L.rooms[L.rooms.length - 1] === r || r.id === 'history';
   return last ? ['south', 'east', 'west', 'north'] : ['south', 'east', 'west'];
 }
 

@@ -11,7 +11,7 @@ import { buildExhibits } from './exhibits.js';
 import { createPlayer } from './player.js';
 import { createInteraction } from './interaction.js';
 import { createMinimap } from './minimap.js';
-import { initAudio, toggleMute, isAudioMuted, setMuted, resumeAudio, suspendAudio } from './audio.js';
+import { initAudio, toggleMute, isAudioMuted, setMuted, resumeAudio, suspendAudio, playVaultUnlockSound } from './audio.js';
 import {
   registerServiceWorker,
   checkAssetCache,
@@ -113,7 +113,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: Q.antialias !== false, pow
 renderer.setPixelRatio(Q.pr);
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = Q.id === 'low' ? 1.05 : 0.9;
+renderer.toneMappingExposure = Q.id === 'low' ? 1.15 : 0.95;
 if (Q.shadows) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -126,14 +126,13 @@ scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnviron
 scene.environmentIntensity = 0.9;
 
 // Natural museum hemisphere ambient lighting (soft warm skylight + rich floor bounce)
-const hemiGround = Q.id === 'low' ? 0x6a5c4a : 0x241c14;
-const hemiIntensity = Q.id === 'low' ? 1.6 : 0.32;
+const hemiGround = Q.id === 'low' ? 0x7a6c58 : 0x3a2e22;
+const hemiIntensity = Q.id === 'low' ? 2.2 : 0.65;
 scene.add(new THREE.HemisphereLight(0xfff5e6, hemiGround, hemiIntensity));
 
-// Low/mobile mode replaced ~38 lights with a 6-light pool, so walls and floors need real ambient fill.
-// Tune live with ?amb=3 (try 1.5 to 4). Default is 3.0 for low quality mode.
+// Ambient fill ensures walls, corners and floors are clearly visible across all quality tiers
 const ambParam = parseFloat(new URLSearchParams(location.search).get('amb'));
-const AMB = !isNaN(ambParam) ? ambParam : (Q.id === 'low' ? 3.0 : 0);
+const AMB = !isNaN(ambParam) ? ambParam : (Q.id === 'low' ? 3.0 : 0.65);
 if (AMB > 0) {
   scene.add(new THREE.AmbientLight(0xfff3e2, AMB));
 }
@@ -189,12 +188,12 @@ try {
   ]);
 } catch (_) {}
 
-const { colliders, blockers } = buildArchitecture(scene, Q);
+const { colliders, blockers, secretDoor } = buildArchitecture(scene, Q);
 if (Q.id === 'low') {
   downgradeMaterials(scene);
   scene.traverse(o => {
     const m = o.material;
-    if (m?.isMeshLambertMaterial && m.color && !m.map) m.color.multiplyScalar(1.5);
+    if (m?.isMeshPhongMaterial && m.color) m.color.multiplyScalar(1.2);
   });
 }
 
@@ -218,7 +217,7 @@ exhibitsPromise.then(built => {
     downgradeMaterials(scene);
     scene.traverse(o => {
       const m = o.material;
-      if (m?.isMeshLambertMaterial && m.color && !m.map) m.color.multiplyScalar(1.5);
+      if (m?.isMeshPhongMaterial && m.color) m.color.multiplyScalar(1.2);
     });
   }
   console.log('[Exhibits] Built successfully. spots.length =', built.allExhibitSpots?.length || 0);
@@ -230,7 +229,9 @@ exhibitsPromise.then(built => {
     controls: player.controls,
     player,
     prompt: $('prompt'),
-    panel: $('panel')
+    panel: $('panel'),
+    secretDoor,
+    openPasscode: openPasscodeModal
   });
 
   // Ensure touch and pointer events on panel are isolated from 3D controls underneath
@@ -272,7 +273,7 @@ exhibitsPromise.then(() => {
   })();
 });
 
-const drawMap = createMinimap($('minimap'));
+const drawMap = createMinimap($('minimap'), secretDoor);
 
 // Adapt Start Screen text for mobile vs desktop immediately
 if (isMobileDevice) {
@@ -602,6 +603,74 @@ menuModal?.addEventListener('click', e => {
   if (e.target === menuModal) closeMenu();
 });
 
+// --- Vault Passcode Modal Management ---
+const passcodeModal = $('passcodeModal');
+const passcodeInput = $('passcodeInput');
+const passcodeForm = $('passcodeForm');
+const passcodeStatus = $('passcodeStatus');
+const passcodeCard = passcodeModal?.querySelector('.passcode-card');
+const tpSecretBtn = $('tpSecretBtn');
+
+function openPasscodeModal() {
+  if (secretDoor?.isUnlocked) return;
+  if (interaction?.isOpen?.()) interaction.close();
+  if (menuModal?.classList.contains('show')) closeMenu();
+  player.setModalOpen(true);
+  try { player.controls.unlock(); } catch (_) {}
+  passcodeModal?.classList.add('show');
+  if (passcodeInput) {
+    passcodeInput.value = '';
+    if (passcodeStatus) {
+      passcodeStatus.textContent = '';
+      passcodeStatus.className = 'passcode-status';
+    }
+    setTimeout(() => passcodeInput.focus(), 80);
+  }
+}
+
+function closePasscodeModal() {
+  passcodeModal?.classList.remove('show');
+  player.setModalOpen(false);
+}
+
+function submitPasscode() {
+  const val = (passcodeInput?.value || '').trim().toLowerCase();
+  if (val === 'harshini') {
+    if (passcodeStatus) {
+      passcodeStatus.textContent = 'ACCESS GRANTED · UNLOCKING CHAMBER';
+      passcodeStatus.className = 'passcode-status success';
+    }
+    try { playVaultUnlockSound(); } catch (_) {}
+    secretDoor?.unlock?.();
+    if (tpSecretBtn) tpSecretBtn.style.display = 'flex';
+    setTimeout(() => {
+      closePasscodeModal();
+    }, 700);
+  } else {
+    if (passcodeStatus) {
+      passcodeStatus.textContent = 'INCORRECT PASSCODE · ACCESS DENIED';
+      passcodeStatus.className = 'passcode-status error';
+    }
+    passcodeCard?.classList.add('shake');
+    setTimeout(() => passcodeCard?.classList.remove('shake'), 450);
+  }
+}
+
+passcodeForm?.addEventListener('submit', e => {
+  e.preventDefault();
+  submitPasscode();
+});
+$('passcodeCloseBtn')?.addEventListener('click', closePasscodeModal);
+passcodeModal?.addEventListener('click', e => {
+  if (e.target === passcodeModal) closePasscodeModal();
+});
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'Escape' && passcodeModal?.classList.contains('show')) {
+    closePasscodeModal();
+  }
+});
+
 // Teleport buttons inside Museum Menu
 document.querySelectorAll('.teleport-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -735,6 +804,7 @@ renderer.setAnimationLoop(() => {
     intT = t0;
   }
   exhibits?.update?.(camera, dt, isPaused);
+  secretDoor?.update?.(dt);
   if (lightPool && exhibits) {
     lightPool.update(camera, exhibits.allExhibitSpots);
   }

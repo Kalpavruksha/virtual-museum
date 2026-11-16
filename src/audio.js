@@ -89,6 +89,42 @@ export function footstep(sprint = false, surface = 'parquet') {
   src.start(t, Math.random() * 0.5, 0.15);
 }
 
+/** Synthesises a rich celestial vault unlatch mechanism & magical harmonic chime */
+export function playVaultUnlockSound() {
+  if (isMuted || !ctx) return;
+  if (ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
+  const t = ctx.currentTime;
+
+  // 1. Mechanical vault lock release (deep resonant clunk)
+  const osc1 = ctx.createOscillator();
+  const gain1 = ctx.createGain();
+  osc1.type = 'triangle';
+  osc1.frequency.setValueAtTime(160, t);
+  osc1.frequency.exponentialRampToValueAtTime(40, t + 0.28);
+  gain1.gain.setValueAtTime(0.40, t);
+  gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+  osc1.connect(gain1).connect(master);
+  osc1.start(t);
+  osc1.stop(t + 0.30);
+
+  // 2. Ascending magical celestial chord (A major sparkling arpeggio)
+  const chord = [440, 554.37, 659.25, 880, 1108.73];
+  chord.forEach((freq, idx) => {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    const noteTime = t + 0.14 + idx * 0.075;
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, noteTime);
+    g.gain.setValueAtTime(0.22, noteTime);
+    g.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.75);
+    osc.connect(g).connect(master);
+    osc.start(noteTime);
+    osc.stop(noteTime + 0.80);
+  });
+}
+
 export function getAudioContext() {
   return ctx;
 }

@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import { L, EXHIBITS, room, placeOnWall } from './layout.js';
 
-export function createMinimap(canvas) {
+export function createMinimap(canvas, secretDoor = null) {
   const g = canvas.getContext('2d');
-  const S = 5.0;
-  // Bounds accommodate enlarged History Room ([-13, 13] x [-54, -34]) and Entrance Hall ([-7, 7] x [-6, 6])
+  const S = 4.25;
+  // Bounds accommodate enlarged History Room ([-13, 13] x [-54, -34]), Secret Room ([5, 14] x [-65, -54]), and Entrance Hall ([-7, 7] x [-6, 6])
   const x0 = -14.5, z0 = 7.5; // metres → px
-  canvas.width = Math.round(29 * S);  // 145 px
-  canvas.height = Math.round(63 * S); // 315 px
+  canvas.width = Math.round(29 * S);  // 123 px
+  canvas.height = Math.round(74 * S); // 315 px
 
   const X = x => (x - x0) * S;
   const Z = z => (z0 - z) * S;
@@ -16,7 +16,8 @@ export function createMinimap(canvas) {
     hall: 'Entrance',
     paintings: 'Paintings',
     music: 'Music',
-    history: 'History'
+    history: 'History',
+    secret: 'Secret'
   };
 
   const typeColors = {
@@ -92,18 +93,29 @@ export function createMinimap(canvas) {
     L.rooms.forEach(r => {
       const [cx, cz] = r.center, [w, d] = r.size;
       const rx = X(cx - w / 2), rz = Z(cz + d / 2), rw = w * S, rd = d * S;
+      const isSecretRoom = r.id === 'secret';
+      const isSecretLocked = isSecretRoom && secretDoor && !secretDoor.isUnlocked;
 
       // Room floor tint
-      g.fillStyle = 'rgba(20, 18, 15, 0.88)';
+      g.fillStyle = isSecretLocked ? 'rgba(12, 10, 8, 0.94)' : 'rgba(20, 18, 15, 0.88)';
       g.fillRect(rx, rz, rw, rd);
 
-      // Gold gallery border
-      g.strokeStyle = 'rgba(184, 151, 90, 0.7)';
-      g.lineWidth = 1.5;
-      g.strokeRect(rx, rz, rw, rd);
+      // Gallery border
+      if (isSecretLocked) {
+        g.save();
+        g.setLineDash([3, 2.5]);
+        g.strokeStyle = 'rgba(184, 151, 90, 0.45)';
+        g.lineWidth = 1.2;
+        g.strokeRect(rx, rz, rw, rd);
+        g.restore();
+      } else {
+        g.strokeStyle = isSecretRoom ? 'rgba(232, 195, 106, 0.85)' : 'rgba(184, 151, 90, 0.7)';
+        g.lineWidth = isSecretRoom ? 1.8 : 1.5;
+        g.strokeRect(rx, rz, rw, rd);
+      }
 
       // Room name label
-      g.fillStyle = 'rgba(232, 195, 106, 0.75)';
+      g.fillStyle = isSecretLocked ? 'rgba(184, 151, 90, 0.5)' : 'rgba(232, 195, 106, 0.75)';
       g.font = '700 8.5px "Aniron", Georgia, serif';
       g.textAlign = 'center';
       g.fillText(roomLabels[r.id] || r.id, rx + rw / 2, rz + 12);
@@ -121,9 +133,27 @@ export function createMinimap(canvas) {
       }
     });
 
+    // Draw secret chamber doorway / lock indicator
+    const secretDoorX = X(9.5);
+    const secretDoorZ = Z(-54);
+    if (secretDoor && !secretDoor.isUnlocked) {
+      // Locked door marker (ruby lock icon on map)
+      g.fillStyle = '#ff4422';
+      g.beginPath();
+      g.arc(secretDoorX, secretDoorZ, 3.0, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = '#fff';
+      g.lineWidth = 0.8;
+      g.stroke();
+    } else {
+      // Unlocked opening
+      g.fillStyle = 'rgba(20, 18, 15, 1)';
+      g.fillRect(secretDoorX - (1.1 * S), secretDoorZ - 2, 2.2 * S, 4);
+    }
+
     // Draw exhibit markers
     exhibitDots.forEach(d => {
-      const isSpecial = d.id === 'elder_wand' || d.id === 'one_ring';
+      const isSpecial = d.id === 'elder_wand' || d.id === 'one_ring' || d.id === 'keerti_photo';
       g.fillStyle = isSpecial ? '#ffd880' : (typeColors[d.type] || '#c9a84c');
       g.beginPath();
       g.arc(X(d.x), Z(d.z), isSpecial ? 2.8 : 2.2, 0, Math.PI * 2);

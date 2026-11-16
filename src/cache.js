@@ -36,7 +36,8 @@ export const SECONDARY_GALLERY_ASSETS = [
   '/assets/models/one-ring/textures/ring_engrave_roughness.png',
   '/assets/the_elder_wand.glb',
   '/assets/dumbledore.jpg',
-  '/assets/Harry-Potter-and-SnapYT.App.webm'
+  '/assets/Harry-Potter-and-SnapYT.App.webm',
+  '/assets/images/img.jpg'
 ];
 
 export const STANDARD_ASSETS = [

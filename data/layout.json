@@ -16,6 +16,12 @@
       "doors": [{ "wall": "south", "at": 0, "width": 3.4, "height": 3.6 }] },
     { "id": "history", "name": "History & Science Room", "center": [0, -44], "size": [26, 20],
       "floor": "marble", "wall": "plasterCool",
-      "doors": [{ "wall": "south", "at": 0, "width": 3.4, "height": 3.6 }] }
+      "doors": [
+        { "wall": "south", "at": 0, "width": 3.4, "height": 3.6 },
+        { "wall": "north", "at": 9.5, "width": 2.2, "height": 3.2 }
+      ] },
+    { "id": "secret", "name": "Secret Chamber", "center": [9.5, -59.5], "size": [9, 11],
+      "floor": "marble", "wall": "plasterWarm",
+      "doors": [] }
   ]
 }

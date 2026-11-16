@@ -146,9 +146,9 @@ const PROC = {
 const DEFS = {
   marble:      { diff: PROC.marbleDiff, nor: PROC.marbleNor, roughTex: PROC.marbleRough, tile: 3, rough: 0.12, metal: 0.02, env: 1.0 },
   parquet:     { diff: PROC.parquetDiff, nor: PROC.parquetNor, roughTex: PROC.parquetRough, tile: 2, rough: 0.32, metal: 0.01, env: 0.7 },
-  plasterWarm: { diff: PROC.plasterDiff('#cdbba2'), nor: PROC.plasterNor, roughTex: PROC.plasterRough, tile: 4, rough: 0.9, metal: 0, env: 0.3 },
-  plasterDark: { diff: PROC.plasterDiff('#563739'), nor: PROC.plasterNor, roughTex: PROC.plasterRough, tile: 4, rough: 0.9, metal: 0, env: 0.3 },
-  plasterCool: { diff: PROC.plasterDiff('#39424e'), nor: PROC.plasterNor, roughTex: PROC.plasterRough, tile: 4, rough: 0.9, metal: 0, env: 0.3 },
+  plasterWarm: { diff: PROC.plasterDiff('#d8cbb8'), nor: PROC.plasterNor, roughTex: PROC.plasterRough, tile: 4, rough: 0.9, metal: 0, env: 0.3 },
+  plasterDark: { diff: PROC.plasterDiff('#765558'), nor: PROC.plasterNor, roughTex: PROC.plasterRough, tile: 4, rough: 0.9, metal: 0, env: 0.3 },
+  plasterCool: { diff: PROC.plasterDiff('#566476'), nor: PROC.plasterNor, roughTex: PROC.plasterRough, tile: 4, rough: 0.9, metal: 0, env: 0.3 },
   trim:        { diff: PROC.plasterDiff('#eae3d7'), nor: PROC.plasterNor, roughTex: PROC.plasterRough, tile: 2, rough: 0.5, metal: 0.05, env: 0.4 },
   ceiling:     { diff: PROC.plasterDiff('#ede9e2'), nor: PROC.plasterNor, roughTex: PROC.plasterRough, tile: 4, rough: 0.95, metal: 0, env: 0.2 },
 };
@@ -241,14 +241,14 @@ export function getCanvasNormalMap() {
   return canvasNormalCache;
 }
 
-/** In low quality / mobile, swaps MeshStandardMaterial for lightweight MeshLambertMaterial */
+/** In low quality / mobile, swaps MeshStandardMaterial for lightweight per-fragment MeshPhongMaterial */
 export function downgradeMaterials(root) {
   const cache = new Map();
   root.traverse(o => {
     const m = o.material;
     if (!m?.isMeshStandardMaterial) return;
     if (!cache.has(m)) {
-      cache.set(m, new THREE.MeshLambertMaterial({
+      cache.set(m, new THREE.MeshPhongMaterial({
         color: m.color,
         map: m.map,
         emissive: m.emissive,
@@ -258,6 +258,7 @@ export function downgradeMaterials(root) {
         opacity: m.opacity,
         side: m.side,
         alphaMap: m.alphaMap,
+        shininess: 8
       }));
     }
     o.material = cache.get(m);

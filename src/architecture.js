@@ -384,5 +384,169 @@ export function buildArchitecture(scene, options = {}) {
     0, 4.75, -47.75, 0
   );
 
-  return { colliders, blockers };
+  // --- Secret Vault Door (History Room North-East Corner, X = 9.5, Z = -54.0) ---
+  const doorW = 2.15, doorH = 3.16, doorD = 0.10;
+  const hingeX = 8.42;
+
+  // Vault Door Outer Archway Casing
+  const frameStoneMat = new THREE.MeshStandardMaterial({
+    color: 0x181512,
+    roughness: 0.65,
+    metalness: 0.18
+  });
+  const frameGoldMat = new THREE.MeshStandardMaterial({
+    color: 0xb8975a,
+    roughness: 0.28,
+    metalness: 0.82
+  });
+
+  const leftPost = new THREE.Mesh(new THREE.BoxGeometry(0.22, 3.3, 0.44), frameStoneMat);
+  leftPost.position.set(8.31, 1.65, -54.0);
+  const rightPost = new THREE.Mesh(new THREE.BoxGeometry(0.22, 3.3, 0.44), frameStoneMat);
+  rightPost.position.set(10.69, 1.65, -54.0);
+  const topLintel = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.22, 0.46), frameStoneMat);
+  topLintel.position.set(9.5, 3.31, -54.0);
+  const frameTrim = new THREE.Mesh(new THREE.BoxGeometry(2.64, 0.08, 0.48), frameGoldMat);
+  frameTrim.position.set(9.5, 3.44, -54.0);
+
+  scene.add(leftPost, rightPost, topLintel, frameTrim);
+  blockers.push(leftPost, rightPost, topLintel);
+
+  // Door Pivot Group at Hinge (X = 8.42, Z = -54.0)
+  const doorPivot = new THREE.Group();
+  doorPivot.position.set(hingeX, 0, -54.0);
+  scene.add(doorPivot);
+
+  // Antique oak door panel with iron bands
+  const oakMat = new THREE.MeshStandardMaterial({
+    color: 0x22160f,
+    roughness: 0.62,
+    metalness: 0.08
+  });
+  const ironMat = new THREE.MeshStandardMaterial({
+    color: 0x242426,
+    roughness: 0.45,
+    metalness: 0.85
+  });
+
+  const doorLeaf = new THREE.Group();
+  doorLeaf.position.set(doorW / 2, doorH / 2, 0);
+
+  const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(doorW, doorH, doorD), oakMat);
+  doorPanel.castShadow = !isLow;
+  doorPanel.receiveShadow = true;
+  doorLeaf.add(doorPanel);
+
+  // Iron horizontal reinforcement straps (top, center, bottom)
+  for (const yOffset of [-1.1, 0, 1.1]) {
+    const strap = new THREE.Mesh(new THREE.BoxGeometry(doorW - 0.08, 0.14, doorD + 0.02), ironMat);
+    strap.position.y = yOffset;
+    doorLeaf.add(strap);
+
+    for (const rx of [-0.85, -0.4, 0.4, 0.85]) {
+      for (const side of [1, -1]) {
+        const rivet = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.03, 8), frameGoldMat);
+        rivet.rotation.x = Math.PI / 2;
+        rivet.position.set(rx, yOffset, side * (doorD / 2 + 0.015));
+        doorLeaf.add(rivet);
+      }
+    }
+  }
+
+  // Central Arcane Vault Lock Dial
+  const dialPlate = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.04, 24), frameGoldMat);
+  dialPlate.rotation.x = Math.PI / 2;
+  dialPlate.position.set(0, 0, doorD / 2 + 0.02);
+  doorLeaf.add(dialPlate);
+
+  // Glowing status gem
+  const gemMat = new THREE.MeshStandardMaterial({
+    color: 0xff3311,
+    emissive: 0xff2200,
+    emissiveIntensity: 2.2,
+    roughness: 0.2
+  });
+  const lockGem = new THREE.Mesh(new THREE.SphereGeometry(0.065, 16, 16), gemMat);
+  lockGem.position.set(0, 0, doorD / 2 + 0.06);
+  doorLeaf.add(lockGem);
+
+  const lockLight = new THREE.PointLight(0xff3311, isLow ? 1.5 : 2.5, 4.0, 2);
+  lockLight.position.set(0, 0, doorD / 2 + 0.25);
+  doorLeaf.add(lockLight);
+
+  // Ring pull handle
+  const handleRing = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.016, 8, 18), frameGoldMat);
+  handleRing.position.set(doorW / 2 - 0.25, -0.15, doorD / 2 + 0.05);
+  doorLeaf.add(handleRing);
+
+  // Highlight line for interaction
+  const hiLineMat = new THREE.LineBasicMaterial({ color: 0xe8c36a });
+  const doorHi = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(doorW + 0.05, doorH + 0.05, doorD + 0.05)), hiLineMat);
+  doorHi.visible = false;
+  doorLeaf.add(doorHi);
+
+  doorLeaf.userData = { isSecretDoor: true, highlight: doorHi };
+  doorPanel.userData = { isSecretDoor: true, highlight: doorHi };
+
+  doorPivot.add(doorLeaf);
+  blockers.push(doorPanel);
+
+  // Door collision box when closed
+  const secretDoorCollider = {
+    minX: 8.35,
+    maxX: 10.65,
+    minZ: -54.3,
+    maxZ: -53.7,
+    id: 'secretDoor'
+  };
+  colliders.push(secretDoorCollider);
+
+  // Door sign above archway
+  createPortalSign(
+    'RESTRICTED ARCHIVES',
+    'Secret Sanctuary · Passcode Clearance Required',
+    'SECURITY AUTHORIZATION REQUIRED',
+    9.5, 3.92, -53.75, 0
+  );
+
+  // Secret Chamber Interior Special Atmosphere & Lighting
+  const secretCeilLight = new THREE.PointLight(0xffeed8, isLow ? 16 : 28, 16, 2);
+  secretCeilLight.position.set(9.5, 4.6, -59.5);
+  scene.add(secretCeilLight);
+
+  // Dedicated spotlight aimed at featured portrait on North wall (Z = -64.8)
+  const spotLight = new THREE.SpotLight(0xffeed0, isLow ? 24 : 45, 14, 0.65, 0.4, 2);
+  spotLight.position.set(9.5, H - 0.3, -61.5);
+  spotLight.target.position.set(9.5, L.artCenterY, -64.8);
+  scene.add(spotLight, spotLight.target);
+
+  // Secret Door Controller
+  const secretDoor = {
+    pivot: doorPivot,
+    gem: lockGem,
+    light: lockLight,
+    collider: secretDoorCollider,
+    isUnlocked: false,
+    currentAngle: 0,
+    targetAngle: 0,
+    unlock: () => {
+      secretDoor.isUnlocked = true;
+      secretDoor.targetAngle = -Math.PI * 0.52; // Swing ~94 degrees inside into secret chamber
+      gemMat.color.setHex(0x22ffaa);
+      gemMat.emissive.setHex(0x22ffaa);
+      gemMat.emissiveIntensity = 2.6;
+      lockLight.color.setHex(0x22ffaa);
+      // Remove collision
+      secretDoorCollider.minX = 99999;
+      secretDoorCollider.maxX = 99999;
+    },
+    update: (dt) => {
+      if (Math.abs(secretDoor.currentAngle - secretDoor.targetAngle) > 0.002) {
+        secretDoor.currentAngle += (secretDoor.targetAngle - secretDoor.currentAngle) * Math.min(1, dt * 3.5);
+        doorPivot.rotation.y = secretDoor.currentAngle;
+      }
+    }
+  };
+
+  return { colliders, blockers, secretDoor };
 }

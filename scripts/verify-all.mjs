@@ -88,6 +88,34 @@ const playerJs = fs.readFileSync('museum/src/player.js', 'utf8');
 check('player.isActive handles desktop controls.isLocked', playerJs.includes('return controls.isLocked;'));
 check('player.isActive handles mobile isTourStarted', playerJs.includes('if (isMobileMode) return isTourStarted;'));
 
+console.log('\n--- 8. SECRET DOOR & KEERTI PHOTO AUDIT ---');
+const secretRoom = layout.rooms.find(r => r.id === 'secret');
+check('Secret room exists in layout.json', !!secretRoom);
+check('Secret room center at [9.5, -59.5]', secretRoom && secretRoom.center[0] === 9.5 && secretRoom.center[1] === -59.5);
+check('History room has north door at 9.5', historyRoom?.doors?.some(d => d.wall === 'north' && d.at === 9.5));
+
+const keertiEx = exhibitsData.exhibits.find(e => e.id === 'keerti_photo');
+check('Keerti photo exhibit exists', !!keertiEx);
+check('Keerti photo title is exactly "Keerti Gadegepagoudar"', keertiEx?.title === 'Keerti Gadegepagoudar');
+check('Keerti photo room is secret and wall is north', keertiEx?.room === 'secret' && keertiEx?.wall === 'north');
+
+const archJs = fs.readFileSync('museum/src/architecture.js', 'utf8');
+check('architecture.js exports secretDoor', archJs.includes('secretDoor'));
+check('architecture.js defines secretDoorCollider', archJs.includes('secretDoorCollider'));
+
+check('main.js validates passcode harshini', mainJs.includes("val === 'harshini'"));
+check('main.js wires playVaultUnlockSound', mainJs.includes('playVaultUnlockSound()'));
+check('main.js wires secretDoor.update in loop', mainJs.includes('secretDoor?.update?.(dt)'));
+check('index.html has passcodeModal', html.includes('id="passcodeModal"'));
+check('index.html has passcodeInput', html.includes('id="passcodeInput"'));
+check('index.html has tpSecretBtn', html.includes('id="tpSecretBtn"'));
+
+const matJs = fs.readFileSync('museum/src/materials.js', 'utf8');
+check('materials.js uses MeshPhongMaterial for per-pixel lighting in low quality', matJs.includes('MeshPhongMaterial'));
+
+const exJs = fs.readFileSync('museum/src/exhibits.js', 'utf8');
+check('exhibits.js pushes video to allExhibitAudios', exJs.includes('allExhibitAudios.push(video)'));
+
 console.log('\n=======================================');
 if (pass) {
   console.log('✅ ALL VERIFICATIONS PASSED SUCCESSFULLY!');
@@ -95,3 +123,4 @@ if (pass) {
   console.error('❌ SOME AUDIT CHECKS FAILED!');
   process.exit(1);
 }
+

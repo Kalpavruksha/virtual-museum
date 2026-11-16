@@ -1641,6 +1641,134 @@ body.is-touch-device #cross {
   box-shadow: 0 0 16px var(--gold-glow);
 }
 
+/* Vault Passcode Modal */
+.passcode-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 3, 2, 0.92);
+  backdrop-filter: blur(14px);
+  z-index: 650;
+  padding: 1.5rem;
+  touch-action: manipulation;
+}
+.passcode-modal.show {
+  display: flex;
+  animation: panelFade .24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.passcode-card {
+  position: relative;
+  max-width: 440px;
+  width: 90vw;
+  background: #14120e;
+  border: 1.5px solid var(--gold);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.95), 0 0 35px rgba(212, 175, 55, 0.3);
+  padding: 1.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  border-radius: 4px;
+  text-align: center;
+}
+.passcode-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(184, 151, 90, 0.3);
+  padding-bottom: 0.8rem;
+}
+.passcode-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.passcode-icon {
+  font-size: 1.4rem;
+}
+.passcode-title {
+  margin: 0;
+  font: 700 1.25rem 'Aniron', Georgia, serif;
+  color: var(--gold2);
+  letter-spacing: 0.12em;
+}
+.passcode-desc {
+  margin: 0;
+  font: 400 0.92rem/1.55 'Cinzel', serif;
+  color: #ccc2b2;
+}
+.passcode-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.passcode-input-wrap {
+  display: flex;
+  gap: 8px;
+}
+.passcode-input {
+  flex: 1;
+  background: rgba(8, 7, 6, 0.85);
+  border: 1.5px solid rgba(184, 151, 90, 0.5);
+  border-radius: 3px;
+  color: #fff;
+  font: 700 1.1rem/1.3 monospace, sans-serif;
+  letter-spacing: 0.15em;
+  padding: 10px 14px;
+  outline: none;
+  text-align: center;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.passcode-input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.4);
+}
+.passcode-submit-btn {
+  background: linear-gradient(180deg, #d4af37, #aa820a);
+  border: 1px solid #ffd866;
+  border-radius: 3px;
+  color: #120e06;
+  font: 700 0.85rem 'Aniron', Georgia, serif;
+  letter-spacing: 0.12em;
+  padding: 10px 18px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.passcode-submit-btn:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 0 18px rgba(212, 175, 55, 0.6);
+}
+.passcode-submit-btn:active {
+  transform: scale(0.96);
+}
+.passcode-status {
+  font: 600 0.88rem 'Cinzel', serif;
+  letter-spacing: 0.06em;
+  min-height: 1.3rem;
+  transition: opacity 0.2s;
+}
+.passcode-status.error {
+  color: #ff6b6b;
+}
+.passcode-status.success {
+  color: #4ade80;
+}
+.passcode-hint {
+  font: italic 0.8rem 'Cinzel', serif;
+  color: rgba(184, 151, 90, 0.7);
+  letter-spacing: 0.04em;
+}
+.shake {
+  animation: shakeAnim 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+@keyframes shakeAnim {
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(4px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+  40%, 60% { transform: translate3d(6px, 0, 0); }
+}
+
 /* Minimap Mobile Positioning & Landscape Modals */
 @media (max-width: 1024px) and (orientation: landscape), (max-height: 520px) {
   #minimap {
@@ -1848,6 +1976,10 @@ body.is-touch-device #cross {
           <span class="tp-num">IV</span>
           <span class="tp-name">History & Science Room</span>
         </button>
+        <button id="tpSecretBtn" class="teleport-btn secret-tp-btn" data-room="secret" data-x="9.5" data-z="-58.5" data-yaw="0" style="display:none; border-color: rgba(212, 175, 55, 0.8);">
+          <span class="tp-num">✦</span>
+          <span class="tp-name">Secret Chamber</span>
+        </button>
       </div>
     </div>
     <div class="menu-section">
@@ -1876,6 +2008,27 @@ body.is-touch-device #cross {
     <div class="menu-actions">
       <button id="menuResumeBtn" class="resume-btn">RESUME TOUR</button>
     </div>
+  </div>
+</div>
+
+<!-- Vault Passcode Modal -->
+<div id="passcodeModal" class="passcode-modal">
+  <div class="passcode-card">
+    <div class="passcode-header">
+      <div class="passcode-title-wrap">
+        <span class="passcode-icon">🔒</span>
+        <h3 class="passcode-title">VAULT SEALED</h3>
+      </div>
+      <button id="passcodeCloseBtn" class="p-close-x" title="Close (Esc)">✕</button>
+    </div>
+    <p class="passcode-desc">This reinforced archive vault is sealed. Enter the secret passcode to disengage the mechanical locking bolts.</p>
+    <form id="passcodeForm" class="passcode-form" onsubmit="return false;">
+      <div class="passcode-input-wrap">
+        <input id="passcodeInput" type="text" class="passcode-input" placeholder="Enter passcode..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" maxlength="32" />
+        <button type="submit" id="passcodeSubmitBtn" class="passcode-submit-btn">UNLOCK</button>
+      </div>
+      <div id="passcodeStatus" class="passcode-status"></div>
+    </form>
   </div>
 </div>
 

@@ -4,7 +4,7 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { suspendAudio, resumeAudio, isAudioMuted } from './audio.js';
 
-export function createInteraction({ camera, targets, blockers, controls, player, prompt, panel }) {
+export function createInteraction({ camera, targets, blockers, controls, player, prompt, panel, secretDoor, openPasscode }) {
   const ray = new THREE.Raycaster();
   ray.far = 4.8;
   const all = [...targets, ...blockers];
@@ -15,7 +15,7 @@ export function createInteraction({ camera, targets, blockers, controls, player,
 
   const owner = o => {
     let cur = o;
-    while (cur && !cur.userData?.exhibit) cur = cur.parent;
+    while (cur && !cur.userData?.exhibit && !cur.userData?.isSecretDoor) cur = cur.parent;
     return cur;
   };
 
@@ -25,7 +25,8 @@ export function createInteraction({ camera, targets, blockers, controls, player,
     hall: 'Grand Entrance Hall',
     paintings: 'Paintings Gallery',
     music: 'Music & Instruments Hall',
-    history: 'History & Science Room'
+    history: 'History & Science Room',
+    secret: 'The Secret Chamber'
   };
 
   // Interactive 3D Model Viewer for Inspection Modal
@@ -282,6 +283,10 @@ export function createInteraction({ camera, targets, blockers, controls, player,
       if (hit) found = owner(hit.object);
     }
 
+    // Check proximity to secret door (X = 9.5, Z = -54.0)
+    const distToDoor = Math.hypot(camera.position.x - 9.5, camera.position.z - (-54.0));
+    const isNearDoor = distToDoor < 3.2 && secretDoor && !secretDoor.isUnlocked;
+
     if (found !== current) {
       if (current && current.userData?.highlight) current.userData.highlight.visible = false;
       if (found && found.userData?.highlight) found.userData.highlight.visible = true;
@@ -289,16 +294,24 @@ export function createInteraction({ camera, targets, blockers, controls, player,
     }
 
     if (btnInteract) {
-      btnInteract.classList.toggle('can-interact', !!current);
+      btnInteract.classList.toggle('can-interact', !!current || isNearDoor);
     }
 
-    prompt.style.opacity = current ? 1 : 0;
-    prompt.style.transform = current ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(8px)';
-    if (current) {
+    const showPrompt = !!current || isNearDoor;
+    prompt.style.opacity = showPrompt ? 1 : 0;
+    prompt.style.transform = showPrompt ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(8px)';
+
+    if (showPrompt) {
       const isTouch = isTouchDevice || document.body.classList.contains('is-touch-device');
-      prompt.textContent = isTouch
-        ? `Tap artwork or press Interact · ${current.userData.exhibit.title}`
-        : `Press E to inspect · ${current.userData.exhibit.title}`;
+      if (isNearDoor || (current && current.userData?.isSecretDoor)) {
+        prompt.textContent = isTouch
+          ? 'Tap or press Interact · Enter Secret Passcode'
+          : 'Press E to enter Secret Door Passcode';
+      } else if (current && current.userData?.exhibit) {
+        prompt.textContent = isTouch
+          ? `Tap artwork or press Interact · ${current.userData.exhibit.title}`
+          : `Press E to inspect · ${current.userData.exhibit.title}`;
+      }
     }
   }
 
@@ -436,7 +449,14 @@ export function createInteraction({ camera, targets, blockers, controls, player,
   function interact() {
     if (open) {
       close();
-    } else if (current) {
+      return;
+    }
+    const distToDoor = Math.hypot(camera.position.x - 9.5, camera.position.z - (-54.0));
+    if ((distToDoor < 3.2 || (current && current.userData?.isSecretDoor)) && secretDoor && !secretDoor.isUnlocked) {
+      openPasscode?.();
+      return;
+    }
+    if (current && current.userData?.exhibit) {
       show(current.userData.exhibit);
     } else {
       // Find nearest exhibit in front
@@ -444,13 +464,22 @@ export function createInteraction({ camera, targets, blockers, controls, player,
       const hit = ray.intersectObjects(all, true)[0];
       if (hit) {
         const found = owner(hit.object);
-        if (found) show(found.userData.exhibit);
+        if (found && found.userData?.isSecretDoor && secretDoor && !secretDoor.isUnlocked) {
+          openPasscode?.();
+        } else if (found && found.userData?.exhibit) {
+          show(found.userData.exhibit);
+        }
       }
     }
   }
 
   function tapSelect(clientX, clientY) {
     if (open || (performance.now() - lastClose < 400)) return false;
+    const distToDoor = Math.hypot(camera.position.x - 9.5, camera.position.z - (-54.0));
+    if (distToDoor < 3.2 && secretDoor && !secretDoor.isUnlocked) {
+      openPasscode?.();
+      return true;
+    }
     const mouse = {
       x: (clientX / window.innerWidth) * 2 - 1,
       y: -(clientY / window.innerHeight) * 2 + 1
@@ -459,7 +488,11 @@ export function createInteraction({ camera, targets, blockers, controls, player,
     const hit = ray.intersectObjects(all, true)[0];
     if (hit) {
       const found = owner(hit.object);
-      if (found) {
+      if (found && found.userData?.isSecretDoor && secretDoor && !secretDoor.isUnlocked) {
+        openPasscode?.();
+        return true;
+      }
+      if (found && found.userData?.exhibit) {
         show(found.userData.exhibit);
         return true;
       }
