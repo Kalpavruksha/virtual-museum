@@ -110,12 +110,6 @@ check('index.html has passcodeModal', html.includes('id="passcodeModal"'));
 check('index.html has passcodeInput', html.includes('id="passcodeInput"'));
 check('index.html has tpSecretBtn', html.includes('id="tpSecretBtn"'));
 
-const matJs = fs.readFileSync('museum/src/materials.js', 'utf8');
-check('materials.js uses MeshPhongMaterial for per-pixel lighting in low quality', matJs.includes('MeshPhongMaterial'));
-
-const exJs = fs.readFileSync('museum/src/exhibits.js', 'utf8');
-check('exhibits.js pushes video to allExhibitAudios', exJs.includes('allExhibitAudios.push(video)'));
-
 console.log('\n=======================================');
 if (pass) {
   console.log('✅ ALL VERIFICATIONS PASSED SUCCESSFULLY!');

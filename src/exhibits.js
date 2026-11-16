@@ -166,7 +166,6 @@ function videoScreen(ex, isLow = false) {
   video.preload = 'auto';
   video.muted = true; // guarantees instant autoplay approval in modern browsers
   video.volume = 0;
-  allExhibitAudios.push(video);
 
   const screenMat = new THREE.MeshBasicMaterial({ map: labelTexture(ex.title, 'loading…', w / h), toneMapped: false });
   video.addEventListener('loadeddata', () => {
@@ -203,27 +202,20 @@ function videoScreen(ex, isLow = false) {
   return {
     object: g,
     media: {
-      start: () => {
-        // Video starts muted, only unmutes within view range
-        video.muted = true;
-        video.play().catch(() => {});
-      },
+      start: () => video.play().catch(() => {}),
       pause: () => {
-        video.muted = true;
-        if (!video.paused) video.pause();
+        video.pause();
       },
       update: d => {
         // Tight, focused screening range: directly in front of the screen (within 4.8m)
         // Does NOT bleed into The One Ring (at 7.2m away)
         const maxDist = 4.8;
-        if (d < maxDist && !isAudioMuted()) {
+        if (d < maxDist) {
           video.muted = false;
           video.volume = THREE.MathUtils.clamp(1 - d / maxDist, 0, 1) * 0.85;
           if (video.paused) video.play().catch(() => {});
         } else {
-          video.muted = true;
           video.volume = 0;
-          if (!video.paused) video.pause();
         }
       },
       pos
@@ -623,6 +615,10 @@ function modelPedestal(ex, isLow = false) {
       pos: new THREE.Vector3(x, 1, z),
       start: () => {
         started = true;
+        // Prime audio during user click gesture so browser never blocks it
+        ringAudio.play().then(() => {
+          if (ringAudio.volume === 0 && !started) ringAudio.pause();
+        }).catch(() => {});
       },
       pause: () => {
         if (!ringAudio.paused) ringAudio.pause();
@@ -631,10 +627,10 @@ function modelPedestal(ex, isLow = false) {
         if (!started) return;
         // Monument viewing range: plays as you approach and watch the monument (within 5.8m)
         const maxDist = 5.8;
-        if (d < maxDist && !isAudioMuted()) {
+        if (d < maxDist) {
           const vol = THREE.MathUtils.clamp((maxDist - d) / (maxDist - 0.8), 0, 1) * 0.85;
-          ringAudio.volume = vol;
-          if (ringAudio.paused && vol > 0.01) ringAudio.play().catch(() => {});
+          ringAudio.volume = isAudioMuted() ? 0 : vol;
+          if (ringAudio.paused && vol > 0.01 && !isAudioMuted()) ringAudio.play().catch(() => {});
         } else {
           ringAudio.volume = 0;
           if (!ringAudio.paused) ringAudio.pause();

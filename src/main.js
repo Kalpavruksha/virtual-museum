@@ -113,7 +113,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: Q.antialias !== false, pow
 renderer.setPixelRatio(Q.pr);
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = Q.id === 'low' ? 1.15 : 0.95;
+renderer.toneMappingExposure = Q.id === 'low' ? 1.05 : 0.9;
 if (Q.shadows) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -126,13 +126,14 @@ scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnviron
 scene.environmentIntensity = 0.9;
 
 // Natural museum hemisphere ambient lighting (soft warm skylight + rich floor bounce)
-const hemiGround = Q.id === 'low' ? 0x7a6c58 : 0x3a2e22;
-const hemiIntensity = Q.id === 'low' ? 2.2 : 0.65;
+const hemiGround = Q.id === 'low' ? 0x6a5c4a : 0x241c14;
+const hemiIntensity = Q.id === 'low' ? 1.6 : 0.32;
 scene.add(new THREE.HemisphereLight(0xfff5e6, hemiGround, hemiIntensity));
 
-// Ambient fill ensures walls, corners and floors are clearly visible across all quality tiers
+// Low/mobile mode replaced ~38 lights with a 6-light pool, so walls and floors need real ambient fill.
+// Tune live with ?amb=3 (try 1.5 to 4). Default is 3.0 for low quality mode.
 const ambParam = parseFloat(new URLSearchParams(location.search).get('amb'));
-const AMB = !isNaN(ambParam) ? ambParam : (Q.id === 'low' ? 3.0 : 0.65);
+const AMB = !isNaN(ambParam) ? ambParam : (Q.id === 'low' ? 3.0 : 0);
 if (AMB > 0) {
   scene.add(new THREE.AmbientLight(0xfff3e2, AMB));
 }
@@ -193,7 +194,7 @@ if (Q.id === 'low') {
   downgradeMaterials(scene);
   scene.traverse(o => {
     const m = o.material;
-    if (m?.isMeshPhongMaterial && m.color) m.color.multiplyScalar(1.2);
+    if (m?.isMeshLambertMaterial && m.color && !m.map) m.color.multiplyScalar(1.5);
   });
 }
 
@@ -217,7 +218,7 @@ exhibitsPromise.then(built => {
     downgradeMaterials(scene);
     scene.traverse(o => {
       const m = o.material;
-      if (m?.isMeshPhongMaterial && m.color) m.color.multiplyScalar(1.2);
+      if (m?.isMeshLambertMaterial && m.color && !m.map) m.color.multiplyScalar(1.5);
     });
   }
   console.log('[Exhibits] Built successfully. spots.length =', built.allExhibitSpots?.length || 0);
