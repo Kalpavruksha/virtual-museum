@@ -479,6 +479,119 @@ export function buildArchitecture(scene, options = {}) {
   handleRing.position.set(doorW / 2 - 0.25, -0.15, doorD / 2 + 0.05);
   doorLeaf.add(handleRing);
 
+  // --- Colossal Anaconda / Serpent Carved Across Vault Door (6.6m Winding Body) ---
+  const snakeCanvas = document.createElement('canvas');
+  snakeCanvas.width = 512;
+  snakeCanvas.height = 256;
+  const sCtx = snakeCanvas.getContext('2d');
+  sCtx.fillStyle = '#0e2416';
+  sCtx.fillRect(0, 0, 512, 256);
+
+  const scW = 16, scH = 10;
+  for (let y = 0; y < 256; y += scH) {
+    const row = Math.floor(y / scH);
+    const xOff = (row % 2) * (scW / 2);
+    for (let x = -scW; x < 512 + scW; x += scW) {
+      const cx = x + xOff, cy = y;
+      const blotch = Math.sin(cx * 0.05) * Math.cos(cy * 0.08) > 0.22;
+      sCtx.fillStyle = blotch ? '#08120a' : '#1c3d25';
+      sCtx.beginPath();
+      sCtx.moveTo(cx, cy - scH / 2);
+      sCtx.lineTo(cx + scW / 2, cy);
+      sCtx.lineTo(cx, cy + scH / 2);
+      sCtx.lineTo(cx - scW / 2, cy);
+      sCtx.closePath();
+      sCtx.fill();
+      sCtx.strokeStyle = blotch ? '#1b2d1f' : '#456b4a';
+      sCtx.lineWidth = 1;
+      sCtx.stroke();
+    }
+  }
+  const snakeTex = new THREE.CanvasTexture(snakeCanvas);
+  snakeTex.wrapS = snakeTex.wrapT = THREE.RepeatWrapping;
+  snakeTex.repeat.set(16, 2);
+  snakeTex.colorSpace = THREE.SRGBColorSpace;
+
+  const snakeMat = isLow
+    ? new THREE.MeshBasicMaterial({ map: snakeTex })
+    : new THREE.MeshStandardMaterial({
+        map: snakeTex,
+        color: 0x36543c,
+        roughness: 0.36,
+        metalness: 0.42
+      });
+
+  const snakeCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.75, -1.35, 0.065),
+    new THREE.Vector3(-0.55, -1.18, 0.075),
+    new THREE.Vector3(-0.10, -0.98, 0.082),
+    new THREE.Vector3(0.55, -0.80, 0.085),
+    new THREE.Vector3(0.80, -0.45, 0.088),
+    new THREE.Vector3(0.50, -0.15, 0.090),
+    new THREE.Vector3(-0.15, -0.22, 0.090),
+    new THREE.Vector3(-0.68, 0.02, 0.088),
+    new THREE.Vector3(-0.65, 0.45, 0.086),
+    new THREE.Vector3(-0.20, 0.68, 0.088),
+    new THREE.Vector3(0.40, 0.88, 0.088),
+    new THREE.Vector3(0.70, 1.12, 0.085),
+    new THREE.Vector3(0.40, 1.32, 0.090),
+    new THREE.Vector3(-0.02, 1.36, 0.095),
+    new THREE.Vector3(-0.28, 1.30, 0.100),
+  ]);
+
+  const snakeBodyGeo = new THREE.TubeGeometry(snakeCurve, 72, 0.052, 10, false);
+  const snakeBodyMesh = new THREE.Mesh(snakeBodyGeo, snakeMat);
+  snakeBodyMesh.castShadow = !isLow;
+  snakeBodyMesh.receiveShadow = true;
+  doorLeaf.add(snakeBodyMesh);
+
+  // Tapered Anaconda Tail
+  const tailGeo = new THREE.ConeGeometry(0.052, 0.22, 10);
+  const tailMesh = new THREE.Mesh(tailGeo, snakeMat);
+  tailMesh.position.set(-0.75, -1.35, 0.065);
+  tailMesh.rotation.z = -Math.PI * 0.75;
+  tailMesh.castShadow = !isLow;
+  doorLeaf.add(tailMesh);
+
+  // Sculpted Viper / Anaconda Head at top end
+  const snakeHeadGroup = new THREE.Group();
+  snakeHeadGroup.position.set(-0.28, 1.30, 0.100);
+  snakeHeadGroup.rotation.z = Math.PI * 0.58;
+
+  // Diamond-shaped anaconda skull
+  const skullGeo = new THREE.SphereGeometry(0.075, 14, 10);
+  skullGeo.scale(1.35, 0.65, 1.7);
+  const skullMesh = new THREE.Mesh(skullGeo, snakeMat);
+  skullMesh.castShadow = !isLow;
+  snakeHeadGroup.add(skullMesh);
+
+  // Glowing Serpent Ruby Eyes
+  const eyeMat = new THREE.MeshStandardMaterial({
+    color: 0xff2200,
+    emissive: 0xff1100,
+    emissiveIntensity: 3.2,
+    roughness: 0.1
+  });
+  const leftEye = new THREE.Mesh(new THREE.SphereGeometry(0.016, 10, 10), eyeMat);
+  leftEye.position.set(-0.072, 0.022, 0.045);
+  const rightEye = new THREE.Mesh(new THREE.SphereGeometry(0.016, 10, 10), eyeMat);
+  rightEye.position.set(0.072, 0.022, 0.045);
+  snakeHeadGroup.add(leftEye, rightEye);
+
+  // Forked Crimson Tongue
+  const tongueMat = new THREE.MeshBasicMaterial({ color: 0xcc1122 });
+  const tongueStem = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.003, 0.08), tongueMat);
+  tongueStem.position.set(0, -0.012, 0.14);
+  const tongueForkL = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.003, 0.035), tongueMat);
+  tongueForkL.position.set(-0.008, -0.012, 0.185);
+  tongueForkL.rotation.y = 0.32;
+  const tongueForkR = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.003, 0.035), tongueMat);
+  tongueForkR.position.set(0.008, -0.012, 0.185);
+  tongueForkR.rotation.y = -0.32;
+  snakeHeadGroup.add(tongueStem, tongueForkL, tongueForkR);
+
+  doorLeaf.add(snakeHeadGroup);
+
   // Highlight line for interaction
   const hiLineMat = new THREE.LineBasicMaterial({ color: 0xe8c36a });
   const doorHi = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(doorW + 0.05, doorH + 0.05, doorD + 0.05)), hiLineMat);
@@ -492,11 +605,15 @@ export function buildArchitecture(scene, options = {}) {
   dialPlate.userData = { isSecretDoor: true, highlight: doorHi };
   lockGem.userData = { isSecretDoor: true, highlight: doorHi };
   handleRing.userData = { isSecretDoor: true, highlight: doorHi };
+  snakeBodyMesh.userData = { isSecretDoor: true, highlight: doorHi };
+  tailMesh.userData = { isSecretDoor: true, highlight: doorHi };
+  skullMesh.userData = { isSecretDoor: true, highlight: doorHi };
+  snakeHeadGroup.userData = { isSecretDoor: true, highlight: doorHi };
   doorLeaf.userData = { isSecretDoor: true, highlight: doorHi };
   doorPanel.userData = { isSecretDoor: true, highlight: doorHi };
 
   doorPivot.add(doorLeaf);
-  blockers.push(doorPanel, doorLeaf);
+  blockers.push(doorPanel, doorLeaf, snakeBodyMesh, skullMesh);
 
   // Door collision box when closed
   const secretDoorCollider = {
