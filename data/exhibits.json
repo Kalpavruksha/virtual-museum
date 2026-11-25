@@ -282,13 +282,13 @@
       "download": null
     },
     {
-      "id": "keerti_photo",
+      "id": "chandramukhi_photo",
       "type": "image",
       "room": "secret",
       "wall": "north",
       "at": 0,
       "maxSize": [1.8, 2.7],
-      "title": "Keerti Gadegepagoudar",
+      "title": "chandramukhi",
       "artist": "Special Honored Dedication",
       "year": "2026",
       "src": "/assets/images/img.jpg",
